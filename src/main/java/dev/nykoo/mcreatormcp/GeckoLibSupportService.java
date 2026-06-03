@@ -1,4 +1,4 @@
-package net.mcreator.MCreatorMCP;
+package dev.nykoo.mcreatormcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.mcreator.element.GeneratableElement;

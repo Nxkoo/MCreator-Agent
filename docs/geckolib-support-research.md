@@ -9,7 +9,7 @@ Implementation must stop at this document until the asset-path mismatch below is
 - Public source repository: https://github.com/NerdyPuzzle/MCreator-Nerdys_Geckolib_Plugin
 - Repository state: archived by owner; no GitHub releases were visible in the web UI.
 - Public plugin page: https://mcreator.net/plugin/91484/nerdys-geckolib-plugin-forge-1182-1192
-- Local plugin artifact inspected: `C:\Users\nykoo\.mcreator\plugins\Nerdys_Geckolib_Plugin (6).zip`
+- Local plugin artifact inspected: `%USERPROFILE%\.mcreator\plugins\Nerdys_Geckolib_Plugin (6).zip`
 - Local plugin SHA-256: `0B817423F444242F7AB4455E026B1178D274EC962EC32C2147B175D9AFB936C0`
 - Upstream `main` commit SHA: not confirmed. The sandbox blocked `git ls-remote` network access, and escalation was rejected by the environment.
 

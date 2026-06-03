@@ -1,4 +1,4 @@
-package net.mcreator.MCreatorMCP;
+package dev.nykoo.mcreatormcp;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

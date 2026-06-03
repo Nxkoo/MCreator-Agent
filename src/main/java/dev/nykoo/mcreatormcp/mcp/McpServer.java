@@ -1,7 +1,7 @@
-package net.mcreator.MCreatorMCP.mcp;
+package dev.nykoo.mcreatormcp.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.mcreator.MCreatorMCP.GeckoLibSupportService;
+import dev.nykoo.mcreatormcp.GeckoLibSupportService;
 import net.mcreator.workspace.Workspace;
 
 import java.io.IOException;

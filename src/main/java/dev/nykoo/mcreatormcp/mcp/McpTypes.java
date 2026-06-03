@@ -1,4 +1,4 @@
-package net.mcreator.MCreatorMCP.mcp;
+package dev.nykoo.mcreatormcp.mcp;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

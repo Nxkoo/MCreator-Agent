@@ -174,7 +174,7 @@ Codex configuration:
 ```toml
 [mcp_servers.mcreator]
 command = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-args = [ "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\Users\\nykoo\\OneDrive\\Documentos\\Mcreator\\scripts\\mcreator-mcp-bridge.ps1" ]
+args = [ "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\path\\to\\MCreatorMCP\\scripts\\mcreator-mcp-bridge.ps1" ]
 startup_timeout_sec = 30
 ```
 
