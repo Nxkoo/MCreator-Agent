@@ -1,11 +1,12 @@
-# MCreatorMCP for MCreator 2024.4
+# MCreatorMCP
 
-This repository is a 2024.4-focused port of
-[modpotato/MCreatorMCP](https://github.com/modpotato/MCreatorMCP).
+MCreatorMCP is a Model Context Protocol server plugin for MCreator 2024.4. It
+lets local MCP clients inspect and operate on an open MCreator workspace through
+safe localhost-only tools.
 
-It runs a local Model Context Protocol server inside MCreator and exposes tools
-for inspecting a workspace, managing mod elements, building/regenerating code,
-and launching the Minecraft client/server actions.
+This repository is maintained by Nykoo as a 2024.4-focused port of
+[modpotato/MCreatorMCP](https://github.com/modpotato/MCreatorMCP). Upstream
+attribution and the MIT license are preserved.
 
 ## Target
 
@@ -16,6 +17,19 @@ and launching the Minecraft client/server actions.
 
 The plugin is intentionally scoped to MCreator 2024.4 only. It does not try to
 support 2025.2+ at the same time.
+
+## Features
+
+- Local MCP JSON-RPC endpoint inside MCreator.
+- Workspace overview, element listing, and workspace structure resources.
+- Tools to create/delete generic mod elements.
+- Tools to build the workspace, regenerate code, and run Minecraft client/server
+  actions.
+- Defensive GeckoLib support for Nerdy's GeckoLib Plugin `6.0.2` on MCreator
+  2024.4:
+  - GeckoLib plugin/API diagnostics.
+  - GeckoLib workspace asset listing and transactional asset import.
+  - Conservative GeckoLib animated element creation and validation helpers.
 
 ## Architecture
 
@@ -83,7 +97,7 @@ Open a workspace, then use the `MCreator MCP` menu to inspect the server status.
 
 ## MCP Surface
 
-Tools:
+Core tools:
 
 - `buildWorkspace`
 - `regenerateCode`
@@ -94,11 +108,27 @@ Tools:
 - `runClient`
 - `runServer`
 
-Resources:
+GeckoLib tools:
+
+- `getGeckoLibStatus`
+- `listGeckoLibAssets`
+- `importGeckoLibAssets`
+- `createGeckoLibElement`
+- `validateGeckoLibElement`
+
+Core resources:
 
 - `workspace://overview`
 - `workspace://elements`
 - `workspace://structure`
+
+GeckoLib resources:
+
+- `workspace://geckolib/status`
+- `workspace://geckolib/assets`
+
+See [docs/geckolib-support.md](docs/geckolib-support.md) for the GeckoLib MVP
+scope, required manual setup, and known limitations.
 
 ## Smoke Test
 
@@ -153,5 +183,5 @@ Codex, so the bridge can initialize against a live MCP server.
 
 ## License
 
-The upstream repository contains an MIT `LICENSE` file. This port preserves that
-license and upstream attribution.
+MIT. This port preserves upstream attribution to
+[modpotato/MCreatorMCP](https://github.com/modpotato/MCreatorMCP).

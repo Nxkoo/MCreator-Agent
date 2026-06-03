@@ -8,9 +8,9 @@
   "info": {
     "name": "MCreatorMCP",
     "version": "1.0.0-2024.4",
-    "description": "Model Context Protocol (MCP) server integration ported for MCreator 2024.4. Provides local tools to inspect workspaces, manage elements, build projects, and run client/server actions.",
-    "author": "modpotato",
-    "website": "https://github.com/modpotato/MCreatorMCP/",
+    "description": "Model Context Protocol (MCP) server integration ported for MCreator 2024.4. Provides local tools to inspect workspaces, manage elements, build projects, run client/server actions, and work defensively with GeckoLib assets.",
+    "author": "Nykoo",
+    "website": "https://github.com/nxkoo/MCreatorMCP/",
     "tags": ["mcp", "llm", "ai", "integration", "tools"],
     "requirements": {
       "java": "21+",

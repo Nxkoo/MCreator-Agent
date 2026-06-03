@@ -28,6 +28,7 @@ public class MCPToolsService {
 
     private static final Logger LOG = LogManager.getLogger("MCP-Tools");
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final GeckoLibSupportService geckoLibSupportService = new GeckoLibSupportService();
 
     /**
      * Register all MCreator tools with the MCP server
@@ -49,7 +50,14 @@ public class MCPToolsService {
         mcpServer.registerHandler("runClient", params -> executeRunClient(mcreator));
         mcpServer.registerHandler("runServer", params -> executeRunServer(mcreator));
 
-        LOG.info("Registered {} MCreator tools", 8);
+        // GeckoLib tools are always registered and report clear errors when the plugin is unavailable.
+        mcpServer.registerHandler("getGeckoLibStatus", params -> getGeckoLibStatus(mcreator));
+        mcpServer.registerHandler("listGeckoLibAssets", params -> listGeckoLibAssets(mcreator));
+        mcpServer.registerHandler("importGeckoLibAssets", params -> importGeckoLibAssets(mcreator, params));
+        mcpServer.registerHandler("createGeckoLibElement", params -> createGeckoLibElement(mcreator, params));
+        mcpServer.registerHandler("validateGeckoLibElement", params -> validateGeckoLibElement(mcreator, params));
+
+        LOG.info("Registered MCreator tools with GeckoLib support");
     }
 
     /**
@@ -185,6 +193,10 @@ public class MCPToolsService {
                 return createErrorResult("Element type is required");
             }
 
+            if (isGeckoLibAnimatedElementType(elementType)) {
+                return createErrorResult("This is a GeckoLib element type. Use createGeckoLibElement instead.");
+            }
+
             // Find the ModElementType
             ModElementType type = null;
             for (ModElementType met : ModElementTypeLoader.getAllModElementTypes()) {
@@ -302,6 +314,70 @@ public class MCPToolsService {
         } catch (Exception e) {
             LOG.error("Error running server", e);
             return createErrorResult("Failed to run server: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult getGeckoLibStatus(MCreator mcreator) {
+        try {
+            return createJsonResult(geckoLibSupportService.getStatus(mcreator));
+        } catch (Exception e) {
+            LOG.error("Error getting GeckoLib status", e);
+            return createErrorResult("Failed to get GeckoLib status: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult listGeckoLibAssets(MCreator mcreator) {
+        try {
+            Workspace workspace = mcreator.getWorkspace();
+            if (workspace == null) {
+                return createErrorResult("No workspace loaded");
+            }
+            return createJsonResult(geckoLibSupportService.listAssets(geckoLibSupportService.assetRootsForWorkspace(workspace)));
+        } catch (Exception e) {
+            LOG.error("Error listing GeckoLib assets", e);
+            return createErrorResult("Failed to list GeckoLib assets: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult importGeckoLibAssets(MCreator mcreator, Map<String, Object> params) {
+        try {
+            Workspace workspace = mcreator.getWorkspace();
+            if (workspace == null) {
+                return createErrorResult("No workspace loaded");
+            }
+            GeckoLibSupportService.AssetImportRequest request = objectMapper.convertValue(params,
+                    GeckoLibSupportService.AssetImportRequest.class);
+            GeckoLibSupportService.AssetImportResult result = geckoLibSupportService.importAssets(
+                    geckoLibSupportService.assetRootsForWorkspace(workspace), request);
+            SwingUtilities.invokeLater(() -> refreshWorkspaceUi(mcreator));
+            return createJsonResult(result);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return createErrorResult(e.getMessage());
+        } catch (Exception e) {
+            LOG.error("Error importing GeckoLib assets", e);
+            return createErrorResult("Failed to import GeckoLib assets: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult createGeckoLibElement(MCreator mcreator, Map<String, Object> params) {
+        try {
+            return createSuccessResult(geckoLibSupportService.createElement(mcreator, params));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return createErrorResult(e.getMessage());
+        } catch (Exception e) {
+            LOG.error("Error creating GeckoLib element", e);
+            return createErrorResult("Failed to create GeckoLib element: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult validateGeckoLibElement(MCreator mcreator, Map<String, Object> params) {
+        try {
+            Workspace workspace = mcreator.getWorkspace();
+            String elementName = params == null ? null : (String) params.get("elementName");
+            return createJsonResult(geckoLibSupportService.validateElement(workspace, elementName));
+        } catch (Exception e) {
+            LOG.error("Error validating GeckoLib element", e);
+            return createErrorResult("Failed to validate GeckoLib element: " + e.getMessage());
         }
     }
 
@@ -505,6 +581,15 @@ public class MCPToolsService {
             new McpTypes.ToolContent("text", message)
         );
         return new McpTypes.ToolResult(content, false);
+    }
+
+    private McpTypes.ToolResult createJsonResult(Object value) throws IOException {
+        return createSuccessResult(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(value));
+    }
+
+    static boolean isGeckoLibAnimatedElementType(String elementType) {
+        return elementType != null
+                && GeckoLibSupportService.ANIMATED_ELEMENT_TYPES.contains(elementType.trim().toLowerCase(Locale.ENGLISH));
     }
 
     /**

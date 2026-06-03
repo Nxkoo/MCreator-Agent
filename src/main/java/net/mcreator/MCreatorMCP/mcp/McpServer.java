@@ -1,6 +1,7 @@
 package net.mcreator.MCreatorMCP.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.mcreator.MCreatorMCP.GeckoLibSupportService;
 import net.mcreator.workspace.Workspace;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class McpServer {
     
     // MCreator integration
     private volatile Workspace currentWorkspace;
+    private final GeckoLibSupportService geckoLibSupportService = new GeckoLibSupportService();
     
     // Capabilities
     private McpTypes.ServerCapabilities serverCapabilities;
@@ -229,6 +231,36 @@ public class McpServer {
         
         tools.add(createTool("runServer", "Start Minecraft server",
             Map.of("type", "object", "properties", Map.of())));
+
+        tools.add(createTool("getGeckoLibStatus", "Get GeckoLib Plugin and workspace API status",
+            Map.of("type", "object", "properties", Map.of())));
+
+        tools.add(createTool("listGeckoLibAssets", "List GeckoLib-related assets in the current workspace",
+            Map.of("type", "object", "properties", Map.of())));
+
+        tools.add(createTool("importGeckoLibAssets", "Import GeckoLib model, animation, and texture assets transactionally",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "assets", Map.of("type", "array", "description", "Assets to import"),
+                       "overwrite", Map.of("type", "boolean", "description", "Whether existing target files can be replaced")
+                   ),
+                   "required", List.of("assets"))));
+
+        tools.add(createTool("createGeckoLibElement", "Create a GeckoLib animated element conservatively",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "elementType", Map.of("type", "string", "description", "animatedentity, animateditem, animatedblock, or animatedarmor"),
+                       "elementName", Map.of("type", "string", "description", "Name of the new element"),
+                       "definition", Map.of("type", "object", "description", "Optional safe fields to initialize")
+                   ),
+                   "required", List.of("elementType", "elementName"))));
+
+        tools.add(createTool("validateGeckoLibElement", "Validate a GeckoLib animated element without modifying the workspace",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "elementName", Map.of("type", "string", "description", "Name of the element to validate")
+                   ),
+                   "required", List.of("elementName"))));
         
         Map<String, Object> response = new HashMap<>();
         response.put("tools", tools);
@@ -322,6 +354,18 @@ public class McpServer {
         structure.setDescription("Project directory structure and file organization");
         structure.setMimeType("application/json");
         resources.add(structure);
+
+        McpTypes.Resource geckoLibStatus = new McpTypes.Resource("workspace://geckolib/status", "GeckoLib Status");
+        geckoLibStatus.setTitle("GeckoLib Status");
+        geckoLibStatus.setDescription("GeckoLib Plugin, API, generator, and animated element type diagnostics");
+        geckoLibStatus.setMimeType("application/json");
+        resources.add(geckoLibStatus);
+
+        McpTypes.Resource geckoLibAssets = new McpTypes.Resource("workspace://geckolib/assets", "GeckoLib Assets");
+        geckoLibAssets.setTitle("GeckoLib Assets");
+        geckoLibAssets.setDescription("GeckoLib model, animation, texture, and invalid JSON asset scan");
+        geckoLibAssets.setMimeType("application/json");
+        resources.add(geckoLibAssets);
         
         Map<String, Object> response = new HashMap<>();
         response.put("resources", resources);
@@ -422,6 +466,29 @@ public class McpServer {
                     content.setText(objectMapper.writeValueAsString(structure));
                 } catch (IOException e) {
                     content.setText("{\"error\":\"Failed to serialize structure\"}");
+                }
+            } else {
+                content.setText("{\"error\":\"No workspace loaded\"}");
+            }
+        } else if ("workspace://geckolib/status".equals(uri)) {
+            content.setName("GeckoLib Status");
+            content.setTitle("GeckoLib Status");
+            try {
+                content.setText(objectMapper.writeValueAsString(geckoLibSupportService.getStatus(currentWorkspace)));
+            } catch (IOException e) {
+                content.setText("{\"error\":\"Failed to serialize GeckoLib status\"}");
+            }
+        } else if ("workspace://geckolib/assets".equals(uri)) {
+            content.setName("GeckoLib Assets");
+            content.setTitle("GeckoLib Assets");
+            if (currentWorkspace != null) {
+                try {
+                    content.setText(objectMapper.writeValueAsString(
+                            geckoLibSupportService.listAssets(geckoLibSupportService.assetRootsForWorkspace(currentWorkspace))));
+                } catch (IOException e) {
+                    content.setText("{\"error\":\"Failed to serialize GeckoLib assets\"}");
+                } catch (Exception e) {
+                    content.setText("{\"error\":\"Failed to scan GeckoLib assets: " + e.getMessage() + "\"}");
                 }
             } else {
                 content.setText("{\"error\":\"No workspace loaded\"}");
