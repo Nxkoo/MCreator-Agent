@@ -21,12 +21,12 @@ function Resolve-MCreatorMcpEndpoint {
 
     $portFile = Join-Path $env:USERPROFILE ".mcreator\mcp\port"
     if (-not (Test-Path $portFile)) {
-        throw "MCreator MCP port file not found: $portFile. Start MCreator with the plugin and open a workspace first."
+        throw "MCreator Agent port file not found: $portFile. Start MCreator with the plugin and open a workspace first."
     }
 
     $port = (Get-Content $portFile -Raw).Trim()
     if ([string]::IsNullOrWhiteSpace($port)) {
-        throw "MCreator MCP port file is empty: $portFile"
+        throw "MCreator Agent port file is empty: $portFile"
     }
 
     return "http://127.0.0.1:$port/mcp"

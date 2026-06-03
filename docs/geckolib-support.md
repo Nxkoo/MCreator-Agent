@@ -1,6 +1,6 @@
 # GeckoLib Support
 
-This document describes the GeckoLib MVP support in MCreatorMCP for MCreator 2024.4.
+This document describes the GeckoLib MVP support in MCreator Agent for MCreator 2024.4.
 
 ## Scope
 
@@ -14,7 +14,7 @@ This document describes the GeckoLib MVP support in MCreatorMCP for MCreator 202
   - `animatedblock`
   - `animatedarmor`
 
-The implementation does not compile against Nerdy's GeckoLib Plugin classes. MCreatorMCP can load when the GeckoLib Plugin is not installed.
+The implementation does not compile against Nerdy's GeckoLib Plugin classes. MCreator Agent can load when the GeckoLib Plugin is not installed.
 
 ## Required Manual Setup
 
@@ -23,7 +23,7 @@ The implementation does not compile against Nerdy's GeckoLib Plugin classes. MCr
 3. Enable GeckoLib manually in Workspace Settings > Required APIs.
 4. Restart or reload MCreator if the plugin or element types were installed after startup.
 
-MCreatorMCP does not silently enable the GeckoLib API. If the API is disabled, GeckoLib creation returns:
+MCreator Agent does not silently enable the GeckoLib API. If the API is disabled, GeckoLib creation returns:
 
 ```text
 GeckoLib API is not enabled in this workspace. Enable it in Workspace Settings > Required APIs, then retry.
@@ -195,4 +195,4 @@ Some plugin-specific fields cannot be inspected safely in the MVP. The response 
 - The upstream Git commit for the inspected zip was not confirmed because network access was blocked during research.
 - The plugin is archived upstream, so compatibility should be treated as best-effort for that artifact and MCreator 2024.4.
 - Full correctness of created animated elements still depends on opening them in MCreator UI and completing plugin-specific fields.
-- Runtime generated asset paths differ from workspace source resource paths. MCreatorMCP imports into workspace resource directories and lets MCreator/generator handle generated runtime assets.
+- Runtime generated asset paths differ from workspace source resource paths. MCreator Agent imports into workspace resource directories and lets MCreator/generator handle generated runtime assets.

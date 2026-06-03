@@ -12,7 +12,7 @@ repositories {
     flatDir { dirs mcreator_path + '/lib' }
 }
 
-group = 'dev.nykoo.mcreatormcp'
+group = 'dev.nykoo.mcreatoragent'
 version = new JsonSlurper().parse(file('src/main/resources/plugin.json'))['info']['version']
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -50,7 +50,7 @@ test {
 }
 
 tasks.jar {
-    archiveFileName.set("MCreatorMCP.zip")
+    archiveFileName.set("MCreator Agent.zip")
 
     // Handle duplicate files
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

@@ -1,6 +1,6 @@
-# MCreatorMCP
+# MCreator Agent
 
-MCreatorMCP is a Model Context Protocol server plugin for MCreator 2024.4. It
+MCreator Agent is a Model Context Protocol server plugin for MCreator 2024.4. It
 lets local MCP clients inspect and operate on an open MCreator workspace through
 safe localhost-only tools.
 
@@ -33,8 +33,8 @@ support 2025.2+ at the same time.
 
 ## Architecture
 
-- `MCreatorMCP` is the Java plugin entry point. It listens for
-  `MCreatorLoadedEvent`, starts the local HTTP server, and adds the `MCreator MCP`
+- `MCreatorAgent` is the Java plugin entry point. It listens for
+  `MCreatorLoadedEvent`, starts the local HTTP server, and adds the `MCreator Agent`
   menu with status and restart actions.
 - `McpHttpTransport` exposes the MCP JSON-RPC endpoint on localhost:
   - `POST /mcp`
@@ -78,7 +78,7 @@ Build the plugin:
 The plugin zip is generated at:
 
 ```text
-build\libs\MCreatorMCP.zip
+build\libs\MCreator Agent.zip
 ```
 
 For local development against an external MCreator source checkout:
@@ -93,7 +93,7 @@ For local development against an external MCreator source checkout:
 .\gradlew.bat runMCreatorWithPlugin -Pmcreator_path=MCreator --no-daemon
 ```
 
-Open a workspace, then use the `MCreator MCP` menu to inspect the server status.
+Open a workspace, then use the `MCreator Agent` menu to inspect the server status.
 
 ## MCP Surface
 
@@ -174,7 +174,7 @@ Codex configuration:
 ```toml
 [mcp_servers.mcreator]
 command = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-args = [ "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\path\\to\\MCreatorMCP\\scripts\\mcreator-mcp-bridge.ps1" ]
+args = [ "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:\\path\\to\\MCreator Agent\\scripts\\mcreator-mcp-bridge.ps1" ]
 startup_timeout_sec = 30
 ```
 

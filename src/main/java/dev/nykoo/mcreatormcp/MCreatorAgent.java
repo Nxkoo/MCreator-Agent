@@ -18,9 +18,9 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class MCreatorMCP extends JavaPlugin {
+public class MCreatorAgent extends JavaPlugin {
 
-    private static final Logger LOG = LogManager.getLogger("MCreatorMCP");
+    private static final Logger LOG = LogManager.getLogger("MCreatorAgent");
     private static final int DEFAULT_HTTP_PORT = 5175;
     private static final String SERVER_VERSION = "1.0.0-2024.4";
     
@@ -29,7 +29,7 @@ public class MCreatorMCP extends JavaPlugin {
     private final MCPToolsService toolsService;
     private volatile int currentHttpPort = DEFAULT_HTTP_PORT;
 
-    public MCreatorMCP(Plugin plugin) {
+    public MCreatorAgent(Plugin plugin) {
         super(plugin);
 
         toolsService = new MCPToolsService();
@@ -39,7 +39,7 @@ public class MCreatorMCP extends JavaPlugin {
             addMcpMenu(event);
         }));
 
-        LOG.info("MCreator MCP plugin loaded for MCreator 2024.4");
+        LOG.info("MCreator Agent plugin loaded for MCreator 2024.4");
     }
 
     private void startMCPServer(MCreatorLoadedEvent event) {
@@ -49,7 +49,7 @@ public class MCreatorMCP extends JavaPlugin {
             int httpPort = findFreePort(DEFAULT_HTTP_PORT);
             currentHttpPort = httpPort;
 
-            mcpServer = new McpServer("MCreator MCP Server", SERVER_VERSION);
+            mcpServer = new McpServer("MCreator Agent Server", SERVER_VERSION);
             mcpServer.setWorkspace(event.getMCreator().getWorkspace());
             toolsService.registerTools(mcpServer, event.getMCreator());
 
@@ -60,7 +60,7 @@ public class MCreatorMCP extends JavaPlugin {
             LOG.info("MCP server started on http://localhost:{}/mcp", httpPort);
         } catch (IOException e) {
             LOG.error("Failed to start MCP server", e);
-            showErrorDialog(L10N.t("plugin.mcreator_mcp.server_error"),
+            showErrorDialog(L10N.t("plugin.mcreator_agent.server_error"),
                     "Failed to start MCP server: " + e.getMessage());
         }
     }
@@ -89,14 +89,14 @@ public class MCreatorMCP extends JavaPlugin {
         MCreator mcreator = event.getMCreator();
 
         BasicAction mcpStatusAction = new BasicAction(mcreator.getActionRegistry(),
-                L10N.t("plugin.mcreator_mcp.menu.status"), e -> showMCPStatus());
+                L10N.t("plugin.mcreator_agent.menu.status"), e -> showMCPStatus());
         mcpStatusAction.setIcon(UIRES.get("16px.info"));
 
         BasicAction mcpRestartAction = new BasicAction(mcreator.getActionRegistry(),
-                L10N.t("plugin.mcreator_mcp.menu.restart"), e -> restartMCPServer(event));
+                L10N.t("plugin.mcreator_agent.menu.restart"), e -> restartMCPServer(event));
         mcpRestartAction.setIcon(UIRES.get("16px.reset"));
 
-        JMenu menu = new JMenu(L10N.t("plugin.mcreator_mcp.menu.main"));
+        JMenu menu = new JMenu(L10N.t("plugin.mcreator_agent.menu.main"));
         menu.add(mcpStatusAction);
         menu.add(mcpRestartAction);
 
@@ -120,7 +120,7 @@ public class MCreatorMCP extends JavaPlugin {
             status = "MCP Server Status: NOT RUNNING";
         }
 
-        showInfoDialog("MCP Server Status", status);
+        showInfoDialog("Agent Server Status", status);
     }
 
     private void showErrorDialog(String title, String message) {

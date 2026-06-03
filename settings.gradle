@@ -1,4 +1,4 @@
-rootProject.name = 'MCreatorMCP'
+rootProject.name = 'MCreator Agent'
 
 include ":MCreator"
 project(":MCreator").projectDir = file(mcreator_path)

@@ -1,6 +1,6 @@
 # GeckoLib Support Research
 
-Phase 0 research for adding defensive Nerdy's GeckoLib Plugin support to MCreatorMCP on MCreator 2024.4.
+Phase 0 research for adding defensive Nerdy's GeckoLib Plugin support to MCreator Agent on MCreator 2024.4.
 
 Implementation must stop at this document until the asset-path mismatch below is accepted in the implementation plan.
 

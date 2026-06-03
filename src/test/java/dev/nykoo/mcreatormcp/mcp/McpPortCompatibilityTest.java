@@ -21,7 +21,7 @@ class McpPortCompatibilityTest {
 
             JsonNode pluginJson = objectMapper.readTree(stream);
 
-            assertEquals("mcreator_mcp_plugin", pluginJson.get("id").asText());
+            assertEquals("mcreator_agent_plugin", pluginJson.get("id").asText());
             assertEquals(2024004, pluginJson.get("supportedversions").get(0).asLong());
             assertEquals("2024.4", pluginJson.get("info").get("requirements").get("mcreator").asText());
         }
