@@ -7,6 +7,7 @@ import net.mcreator.element.ModElementTypeLoader;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.elements.ModElement;
 import net.mcreator.ui.MCreator;
+import net.mcreator.ui.variants.modmaker.ModMaker;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.io.File;
+import java.io.IOException;
 import javax.swing.SwingUtilities;
 
 /**
@@ -205,9 +208,15 @@ public class MCPToolsService {
             final String finalName = elementName.trim();
             
             runOnEdtAndWait(() -> {
-                ModElement element = new ModElement(workspace, finalName, finalType);
-                workspace.addModElement(element);
-                workspace.markDirty();
+                try {
+                    ModElement element = new ModElement(workspace, finalName, finalType);
+                    workspace.addModElement(element);
+                    createDefaultElementDefinition(workspace, element);
+                    workspace.markDirty();
+                    refreshWorkspaceUi(mcreator);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to create default element definition", e);
+                }
             });
 
             return createSuccessResult("Element '" + elementName + "' of type '" + elementType + "' created successfully");
@@ -245,6 +254,7 @@ public class MCPToolsService {
             runOnEdtAndWait(() -> {
                 workspace.removeModElement(element);
                 workspace.markDirty();
+                refreshWorkspaceUi(mcreator);
             });
 
             return createSuccessResult("Element '" + elementName + "' deleted successfully");
@@ -325,6 +335,154 @@ public class MCPToolsService {
         } else {
             SwingUtilities.invokeAndWait(action);
         }
+    }
+
+    private void refreshWorkspaceUi(MCreator mcreator) {
+        try {
+            if (mcreator instanceof ModMaker modMaker && modMaker.getWorkspacePanel() != null) {
+                modMaker.getWorkspacePanel().reloadElementsInCurrentTab();
+            } else {
+                mcreator.reloadWorkspaceTabContents();
+            }
+        } catch (Exception e) {
+            LOG.warn("Workspace model changed, but UI refresh failed", e);
+        }
+    }
+
+    private void createDefaultElementDefinition(Workspace workspace, ModElement element) throws IOException {
+        String type = element.getType().getRegistryName();
+        if (!"item".equals(type) && !"tool".equals(type)) {
+            return;
+        }
+
+        File elementsDir = new File(workspace.getWorkspaceFolder(), "elements");
+        if (!elementsDir.exists() && !elementsDir.mkdirs()) {
+            throw new IOException("Could not create elements directory: " + elementsDir);
+        }
+
+        File definitionFile = new File(elementsDir, element.getName() + ".mod.json");
+        if (definitionFile.exists()) {
+            return;
+        }
+
+        Map<String, Object> root = loadExistingDefinitionTemplate(elementsDir, type);
+        if (root == null) {
+            root = "tool".equals(type) ? createToolDefinitionTemplate() : createItemDefinitionTemplate();
+        }
+
+        root.put("_fv", workspace.getMCreatorVersion() >= 2024004 ? 73 : 0);
+        root.put("_type", type);
+
+        Object definition = root.get("definition");
+        if (definition instanceof Map<?, ?> definitionMap) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> mutableDefinition = (Map<String, Object>) definitionMap;
+            mutableDefinition.put("name", element.getName());
+        }
+
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(definitionFile, root);
+    }
+
+    private Map<String, Object> loadExistingDefinitionTemplate(File elementsDir, String type) {
+        File[] files = elementsDir.listFiles((dir, name) -> name.endsWith(".mod.json"));
+        if (files == null) {
+            return null;
+        }
+
+        for (File file : files) {
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> root = objectMapper.readValue(file, Map.class);
+                if (type.equals(root.get("_type")) && root.get("definition") instanceof Map<?, ?>) {
+                    return root;
+                }
+            } catch (IOException e) {
+                LOG.debug("Skipping element definition template {}", file, e);
+            }
+        }
+        return null;
+    }
+
+    private Map<String, Object> createItemDefinitionTemplate() {
+        Map<String, Object> definition = new LinkedHashMap<>();
+        definition.put("renderType", 0);
+        definition.put("texture", "");
+        definition.put("customModelName", "Normal");
+        definition.put("customProperties", new LinkedHashMap<>());
+        definition.put("states", new ArrayList<>());
+        definition.put("name", "");
+        definition.put("rarity", "COMMON");
+        definition.put("creativeTabs", new ArrayList<>());
+        definition.put("stackSize", 64);
+        definition.put("enchantability", 0);
+        definition.put("useDuration", 0);
+        definition.put("toolType", 1.0);
+        definition.put("damageCount", 0);
+        definition.put("recipeRemainder", Map.of("value", ""));
+        definition.put("destroyAnyBlock", false);
+        definition.put("immuneToFire", false);
+        definition.put("stayInGridWhenCrafting", false);
+        definition.put("damageOnCrafting", false);
+        definition.put("enableMeleeDamage", false);
+        definition.put("damageVsEntity", 0.0);
+        definition.put("specialInformation", Map.of("fixedValue", new ArrayList<>()));
+        definition.put("glowCondition", Map.of("fixedValue", false));
+        definition.put("inventorySize", 9);
+        definition.put("inventoryStackSize", 64);
+        definition.put("enableRanged", false);
+        definition.put("shootConstantly", false);
+        definition.put("rangedItemChargesPower", false);
+        definition.put("projectile", Map.of("value", "Arrow"));
+        definition.put("projectileDisableAmmoCheck", false);
+        definition.put("isFood", false);
+        definition.put("nutritionalValue", 4);
+        definition.put("saturation", 0.3);
+        definition.put("eatResultItem", Map.of("value", ""));
+        definition.put("isMeat", false);
+        definition.put("isAlwaysEdible", false);
+        definition.put("animation", "none");
+        definition.put("isMusicDisc", false);
+        definition.put("musicDiscMusic", Map.of("value", ""));
+        definition.put("musicDiscDescription", "");
+        definition.put("musicDiscLengthInTicks", 100);
+        definition.put("musicDiscAnalogOutput", 0);
+
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("_fv", 73);
+        root.put("_type", "item");
+        root.put("definition", definition);
+        return root;
+    }
+
+    private Map<String, Object> createToolDefinitionTemplate() {
+        Map<String, Object> definition = new LinkedHashMap<>();
+        definition.put("toolType", "Pickaxe");
+        definition.put("renderType", 0);
+        definition.put("blockingRenderType", 0);
+        definition.put("texture", "");
+        definition.put("customModelName", "Normal");
+        definition.put("blockingModelName", "Normal blocking");
+        definition.put("name", "");
+        definition.put("specialInformation", Map.of("fixedValue", new ArrayList<>()));
+        definition.put("creativeTabs", List.of(Map.of("value", "TOOLS")));
+        definition.put("efficiency", 4.0);
+        definition.put("attackSpeed", 1.0);
+        definition.put("enchantability", 2);
+        definition.put("damageVsEntity", 4.0);
+        definition.put("usageCount", 100);
+        definition.put("glowCondition", Map.of("fixedValue", false));
+        definition.put("repairItems", new ArrayList<>());
+        definition.put("immuneToFire", false);
+        definition.put("blockDropsTier", "WOOD");
+        definition.put("blocksAffected", new ArrayList<>());
+        definition.put("stayInGridWhenCrafting", false);
+        definition.put("damageOnCrafting", false);
+
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("_fv", 73);
+        root.put("_type", "tool");
+        root.put("definition", definition);
+        return root;
     }
 
     /**
