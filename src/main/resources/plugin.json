@@ -1,0 +1,20 @@
+{
+  "id": "mcreator_mcp_plugin",
+  "supportedversions": [
+    2024004
+  ],
+  "weight": 0,
+  "javaplugin": "net.mcreator.MCreatorMCP.MCreatorMCP",
+  "info": {
+    "name": "MCreatorMCP",
+    "version": "1.0.0-2024.4",
+    "description": "Model Context Protocol (MCP) server integration ported for MCreator 2024.4. Provides local tools to inspect workspaces, manage elements, build projects, and run client/server actions.",
+    "author": "modpotato",
+    "website": "https://github.com/modpotato/MCreatorMCP/",
+    "tags": ["mcp", "llm", "ai", "integration", "tools"],
+    "requirements": {
+      "java": "21+",
+      "mcreator": "2024.4"
+    }
+  }
+}
