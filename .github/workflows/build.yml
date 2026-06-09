@@ -46,8 +46,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MCreatorMCP-artifact
-          path: build/libs/MCreatorMCP.zip
+          name: MCreator-Agent-plugin
+          path: build/libs/MCreator Agent.zip
           if-no-files-found: error
           retention-days: 7
 
