@@ -56,6 +56,7 @@ class McpPortCompatibilityTest {
         assertToolExists(tools, "listModElements");
         assertToolExists(tools, "createElement");
         assertToolExists(tools, "deleteElement");
+        assertToolExists(tools, "setModElementLock");
         assertToolExists(tools, "runClient");
         assertToolExists(tools, "runServer");
         assertToolExists(tools, "getGeckoLibStatus");
@@ -63,6 +64,30 @@ class McpPortCompatibilityTest {
         assertToolExists(tools, "importGeckoLibAssets");
         assertToolExists(tools, "createGeckoLibElement");
         assertToolExists(tools, "validateGeckoLibElement");
+    }
+
+    @Test
+    void lockToolRequiresElementNameAndDesiredLockState() {
+        McpServer server = new McpServer("test", "1.0.0-test");
+        JsonRpcMessage request = new JsonRpcMessage();
+        request.setId(1);
+        request.setMethod("tools/list");
+        request.setParams(Map.of());
+
+        JsonRpcMessage response = server.processMessage(request);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) response.getResult();
+        @SuppressWarnings("unchecked")
+        List<McpTypes.Tool> tools = (List<McpTypes.Tool>) result.get("tools");
+        McpTypes.Tool lockTool = tools.stream()
+                .filter(tool -> "setModElementLock".equals(tool.getName()))
+                .findFirst()
+                .orElseThrow();
+
+        @SuppressWarnings("unchecked")
+        List<String> required = (List<String>) lockTool.getInputSchema().get("required");
+        assertEquals(List.of("elementName", "locked"), required);
     }
 
     @Test

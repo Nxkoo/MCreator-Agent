@@ -55,6 +55,14 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         args: `{ elementName: string }`,
         notes: "Always confirm intent in the client UI.",
       },
+      {
+        name: "setModElementLock",
+        kind: "WRITE",
+        purpose: "Set whether an element's generated code is locked.",
+        args: `{ elementName: string, locked: boolean }`,
+        example: `setModElementLock({ elementName: "ExampleBlock", locked: true })`,
+        notes: "Updates the workspace and UI without regenerating code or starting a build.",
+      },
     ],
   },
   {

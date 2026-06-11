@@ -219,6 +219,7 @@ example.
 | `listModElements` | Read | Lists mod elements in the current workspace. |
 | `createElement` | Write | Creates a generic mod element by type/name; item and tool get safe default definitions. |
 | `deleteElement` | Write | Deletes a mod element by name from the workspace. |
+| `setModElementLock` | Write | Locks or unlocks a mod element's generated code without regenerating or building. |
 
 ### Action tools
 

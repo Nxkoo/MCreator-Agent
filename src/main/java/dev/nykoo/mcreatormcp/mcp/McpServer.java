@@ -224,6 +224,14 @@ public class McpServer {
                        "elementName", Map.of("type", "string", "description", "Name of element to delete")
                    ),
                    "required", List.of("elementName"))));
+
+        tools.add(createTool("setModElementLock", "Set whether an MCreator mod element's generated code is locked",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "elementName", Map.of("type", "string", "description", "Name of element to lock or unlock"),
+                       "locked", Map.of("type", "boolean", "description", "Desired code lock state")
+                   ),
+                   "required", List.of("elementName", "locked"))));
         
         // Testing tools
         tools.add(createTool("runClient", "Start Minecraft client",

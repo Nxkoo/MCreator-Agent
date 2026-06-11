@@ -45,6 +45,7 @@ public class MCPToolsService {
         mcpServer.registerHandler("listModElements", params -> listModElements(mcreator, params));
         mcpServer.registerHandler("createElement", params -> createElement(mcreator, params));
         mcpServer.registerHandler("deleteElement", params -> deleteElement(mcreator, params));
+        mcpServer.registerHandler("setModElementLock", params -> setModElementLock(mcreator, params));
 
         // Testing tools
         mcpServer.registerHandler("runClient", params -> executeRunClient(mcreator));
@@ -274,6 +275,61 @@ public class MCPToolsService {
         } catch (Exception e) {
             LOG.error("Error deleting element", e);
             return createErrorResult("Failed to delete element: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Set the desired code lock state of a mod element without regenerating or building the workspace.
+     */
+    private McpTypes.ToolResult setModElementLock(MCreator mcreator, Map<String, Object> params) {
+        String elementName = params == null ? null : (String) params.get("elementName");
+        Object lockedValue = params == null ? null : params.get("locked");
+
+        LOG.info("Executing setModElementLock tool: {} -> {}", elementName, lockedValue);
+
+        try {
+            Workspace workspace = mcreator.getWorkspace();
+            if (workspace == null) {
+                return createErrorResult("No workspace loaded");
+            }
+
+            if (elementName == null || elementName.trim().isEmpty()) {
+                return createErrorResult("Element name is required");
+            }
+
+            if (!(lockedValue instanceof Boolean locked)) {
+                return createErrorResult("Locked state must be a boolean");
+            }
+
+            ModElement element = workspace.getModElementByName(elementName.trim());
+            if (element == null) {
+                return createErrorResult("Element '" + elementName + "' not found");
+            }
+
+            boolean previousState = element.isCodeLocked();
+            if (previousState != locked) {
+                runOnEdtAndWait(() -> {
+                    element.setCodeLock(locked);
+                    if (element.isCodeLocked() != previousState) {
+                        workspace.markDirty();
+                        refreshWorkspaceUi(mcreator);
+                    }
+                });
+            }
+
+            if (element.isCodeLocked() != locked) {
+                return createErrorResult("Element '" + element.getName() + "' does not support the requested lock state");
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("elementName", element.getName());
+            result.put("locked", element.isCodeLocked());
+            result.put("changed", previousState != element.isCodeLocked());
+            return createJsonResult(result);
+
+        } catch (Exception e) {
+            LOG.error("Error setting mod element lock", e);
+            return createErrorResult("Failed to set mod element lock: " + e.getMessage());
         }
     }
 
