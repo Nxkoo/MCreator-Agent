@@ -210,7 +210,12 @@ function ReleaseGuide() {
         <CodeBlock language="bash" code={TAG_CMDS} />
         <p className="text-muted-foreground">
           Publish a GitHub release using the new tag. Paste the changelog section into the release
-          body and attach <code>build/libs/MCreator Agent.zip</code>.
+          body and attach <code>build/libs/MCreator Agent.zip</code>. Mention contributors in the
+          release body and link related GitHub issues or discussions.
+        </p>
+        <p className="text-muted-foreground">
+          If GitHub release packaging is not available yet, keep the website preview ZIP and
+          changelog in sync, then publish the GitHub release when repository sync is ready.
         </p>
       </Step>
 

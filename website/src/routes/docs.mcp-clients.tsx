@@ -211,11 +211,18 @@ function Clients() {
 
       <hr className="my-10 border-border" />
 
-      <h2 className="mt-10 text-2xl text-foreground">Advanced: stdio fallback</h2>
+      <h2 className="mt-10 text-2xl text-foreground">Advanced: stdio bridge for older clients</h2>
       <p>
-        If your client only supports MCP over stdio (not HTTP URLs), you can use the included PowerShell bridge script. Replace the script path below with your local checkout path.
+        Most users do not need this. Use it only if your MCP client cannot connect to an HTTP MCP
+        server and only supports launching stdio servers. The included PowerShell bridge script
+        forwards stdio JSON-RPC to the local HTTP endpoint. Replace the path below with your local
+        checkout path.
       </p>
       <CodeBlock filename="mcp.json" language="json" code={BRIDGE_WINDOWS} />
+      <Callout variant="warning">
+        Prefer the HTTP endpoint whenever possible. The bridge is only a compatibility fallback for
+        stdio-only clients.
+      </Callout>
 
       <Callout variant="local">
         The server binds on the local loopback host. Workspace resources are scoped to the active

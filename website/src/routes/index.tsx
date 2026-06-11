@@ -102,8 +102,9 @@ function Home() {
             your MCreator workspace.
           </h1>
           <p className="mt-6 max-w-3xl text-[17px] leading-relaxed text-muted-foreground">
-            A <span className="text-foreground">local-first MCP server</span> that gives Claude,
-            Cursor, Codex, and other MCP clients a typed tool surface for MCreator workspaces.
+            A <span className="text-foreground">local-first MCreator plugin and MCP server</span>{" "}
+            that gives Claude, Cursor, Codex, and other MCP clients a typed tool surface for
+            MCreator workspaces.
           </p>
           <p className="mt-3 max-w-2xl text-sm text-muted-foreground/90">
             No cloud upload. No telemetry. Your workspace stays on your machine.
@@ -128,7 +129,7 @@ function Home() {
               download
               className="inline-flex items-center gap-2 rounded border border-success/50 bg-success/10 px-4 py-2 font-mono text-xs uppercase tracking-wider text-success transition hover:bg-success/20"
             >
-              Download ZIP
+              Download Preview
             </a>
             <a
               href="https://github.com/Nxkoo/MCreator-Agent"
@@ -360,7 +361,7 @@ function Home() {
                 "Check plugin/API status",
                 "List GeckoLib assets",
                 "Import model, animation, or texture files",
-                "Create supported animated elements",
+                "Scaffold supported animated elements",
                 "Validate known model/texture references",
                 "Build the workspace",
               ].map((s, i) => (
@@ -492,7 +493,7 @@ function Home() {
                 v: "Older",
                 status: "Unverified",
                 tone: "muted",
-                note: "Not validated. Use at your own risk.",
+                note: "Unverified. Not validated yet.",
               },
               {
                 v: "GeckoLib Plugin",

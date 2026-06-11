@@ -43,7 +43,8 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
       {
         name: "createElement",
         kind: "WRITE",
-        purpose: "Create a new generic workspace element by type and name.",
+        purpose:
+          "Create a supported generic MCreator element by type and name. GeckoLib animated types should use createGeckoLibElement.",
         args: `{ elementType: string, elementName: string }`,
         notes:
           "Currently writes safe default .mod.json templates for item and tool. GeckoLib animated types use createGeckoLibElement.",
@@ -129,7 +130,7 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         name: "validateGeckoLibElement",
         kind: "GECKOLIB",
         purpose:
-          "Check GeckoLib plugin/API availability, supported type, and known asset references.",
+          "Check GeckoLib plugin/API availability, supported type, known required fields, and known asset references.",
         args: `{ elementName: string }`,
         notes:
           "Validation checks known model and texture references such as animModel, model, texture, and entityTexture.",
@@ -175,8 +176,8 @@ function Tools() {
       </p>
 
       <Callout variant="note">
-        Tool names and shapes may evolve during preview. Once stable, they'll be locked behind a
-        versioned schema.
+        <strong>Preview</strong>: Tool names and argument shapes may evolve before the first stable
+        compatibility contract. The docs reflect the current preview build.
       </Callout>
 
       {GROUPS.map((g) => (

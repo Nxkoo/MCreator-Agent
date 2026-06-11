@@ -92,6 +92,13 @@ function Arch() {
         <li>No background network activity. The agent doesn't reach the network on its own.</li>
       </ul>
 
+      <h2 className="mt-10 text-2xl text-foreground">Trust boundary</h2>
+      <p>
+        MCreator Agent runs locally and exposes tools to your MCP client. If your MCP client sends
+        tool results to a remote model, that is controlled by the client and model provider. MCreator
+        Agent itself does not upload your workspace or call a model directly.
+      </p>
+
       <h2 className="mt-10 text-2xl text-foreground">Roadmap shape</h2>
       <p>
         The tool surface is intentionally small. New tools are added when they're useful and

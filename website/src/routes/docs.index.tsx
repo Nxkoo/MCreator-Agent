@@ -28,16 +28,16 @@ function DocsIndex() {
   return (
     <DocsLayout eyebrow="Documentation" title="Introduction">
       <p>
-        <strong className="text-foreground">MCreator Agent</strong> is a local-first MCP server that
-        exposes your MCreator workspace to AI agents. It runs as a single process on your machine,
-        speaks the Model Context Protocol over a local HTTP endpoint, and gives an agent a typed,
-        scoped view of your mod — elements, procedures, assets, and GeckoLib resources.
+        <strong className="text-foreground">MCreator Agent</strong> is a local-first MCP server for
+        MCreator workspaces. It runs alongside MCreator, exposes a local HTTP endpoint, and gives
+        MCP-compatible clients a typed, scoped view of the active workspace — elements, procedures,
+        assets, build actions, and supported plugin workflows such as GeckoLib.
       </p>
 
       <p>
-        It does not upload your workspace anywhere. It does not call out to a model on its own. You
-        bring an MCP-compatible client, point it at the local server, and the agent starts working
-        with what's already on disk.
+        It does not upload your workspace anywhere. It does not call a model on its own. You bring an
+        MCP-compatible client, point it at the local server, and decide what the agent can ask or
+        change.
       </p>
 
       <Callout variant="local">
@@ -49,7 +49,10 @@ function DocsIndex() {
         <li>An MCP server for MCreator workspaces.</li>
         <li>Local-first, agent-ready, open-source (MIT).</li>
         <li>Focused on modding workflows, not general-purpose code editing.</li>
-        <li>Designed with version-aware support in mind, starting with MCreator 2024.4.</li>
+        <li>
+          Initial validated support starts with MCreator 2024.4, with version-aware support designed
+          to expand across newer releases as they are validated.
+        </li>
       </ul>
 
       <h2 className="mt-10 text-2xl text-foreground">What it isn't</h2>
@@ -65,25 +68,31 @@ function DocsIndex() {
           <Link to="/docs/quickstart" className="text-primary hover:underline">
             Quickstart
           </Link>{" "}
-          — install and connect in a few minutes.
+          — install the plugin, open MCreator, and connect your first client.
         </li>
         <li>
           <Link to="/docs/installation" className="text-primary hover:underline">
             Installation
           </Link>{" "}
-          — detailed install paths per platform.
+          — learn how to install the plugin ZIP in MCreator.
         </li>
         <li>
           <Link to="/docs/mcp-clients" className="text-primary hover:underline">
-            MCP clients
+            MCP Clients
           </Link>{" "}
-          — connect from the editor / agent you already use.
+          — configure Claude, Cursor, Codex, or another MCP client.
         </li>
         <li>
           <Link to="/docs/tools" className="text-primary hover:underline">
             Tools
           </Link>{" "}
-          — the full MCP tool reference.
+          — see the available MCP tools.
+        </li>
+        <li>
+          <Link to="/docs/geckolib" className="text-primary hover:underline">
+            GeckoLib
+          </Link>{" "}
+          — understand the scoped GeckoLib workflow.
         </li>
       </ul>
     </DocsLayout>

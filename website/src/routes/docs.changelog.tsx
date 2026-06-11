@@ -42,7 +42,7 @@ type Release = {
 const RELEASES: Release[] = [
   {
     version: "1.0.0-2024.4 · preview",
-    date: "Unreleased",
+    date: "Preview build available",
     status: "preview",
     summary:
       "First preview of MCreator Agent. Local-first MCP server with a small, deliberate tool surface.",
@@ -50,18 +50,17 @@ const RELEASES: Release[] = [
       { tag: "added", text: "Local MCP HTTP endpoint on the loopback host." },
       {
         tag: "added",
-        text: "Workspace tools: getWorkspaceInfo, listModElements, createElement, deleteElement.",
+        text: "Workspace tools: getWorkspaceInfo, listModElements, createElement, deleteElement, setModElementLock.",
       },
       { tag: "added", text: "Action tools: regenerateCode, buildWorkspace, runClient, runServer." },
       {
         tag: "added",
-        text: "GeckoLib tools: status, list, import, create, validate (when plugin installed).",
+        text: "GeckoLib tools: status, list, import (with targetName and geo alias), create, validate (when plugin installed).",
       },
       { tag: "compatibility", text: "Initial validated support for MCreator 2024.4 / 2024004." },
-      { tag: "compatibility", text: "Java 21+ required." },
       {
         tag: "note",
-        text: "Current preview ZIP is available from the website and can also be built from source as build/libs/MCreator Agent.zip. Signed installers are pending.",
+        text: "Preview ZIP is available from the website and can also be built from source as build/libs/MCreator Agent.zip. GitHub release packaging may follow separately. Signed installers are pending.",
       },
     ],
   },
