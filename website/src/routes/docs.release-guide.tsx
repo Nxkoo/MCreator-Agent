@@ -231,8 +231,8 @@ function ReleaseGuide() {
         </li>
         <li>
           Mention contributors in the release body — see{" "}
-          <Link to="/contributing" className="text-primary hover:underline">
-            Contributing
+          <Link to="/about" className="text-primary hover:underline">
+            About
           </Link>
           .
         </li>

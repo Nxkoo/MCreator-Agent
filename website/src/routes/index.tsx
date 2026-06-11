@@ -58,6 +58,7 @@ const TOOL_GROUPS: { title: string; tools: { name: string; kind: ToolKind }[] }[
       { name: "listModElements", kind: "READ" },
       { name: "createElement", kind: "WRITE" },
       { name: "deleteElement", kind: "WRITE" },
+      { name: "setModElementLock", kind: "WRITE" },
     ],
   },
   {
@@ -123,7 +124,7 @@ function Home() {
               View tools
             </Link>
             <a
-              href="/downloads/MCreator-Agent-1.0.0-2024.4.zip"
+              href={`${import.meta.env.BASE_URL}downloads/MCreator-Agent-1.0.0-2024.4.zip`}
               download
               className="inline-flex items-center gap-2 rounded border border-success/50 bg-success/10 px-4 py-2 font-mono text-xs uppercase tracking-wider text-success transition hover:bg-success/20"
             >
@@ -430,22 +431,22 @@ function Home() {
 
             <div className="rounded-lg border border-border bg-surface p-6">
               <pre className="overflow-x-auto font-mono text-[12.5px] leading-relaxed text-foreground/90">
-                {`┌─────────────────────────────┐
-│  MCP client  (agent / IDE)  │
-└──────────────┬──────────────┘
-               │  MCP over localhost
-               ▼
-┌─────────────────────────────┐
-│  mcreator-agent  (local)    │
-│  • tools  • resources       │
-│  • diagnostics  • validators│
-└──────────────┬──────────────┘
-               │  reads / proposes edits
-               ▼
-┌─────────────────────────────┐
-│  Your MCreator workspace    │
-│  ./my-mod/                  │
-└─────────────────────────────┘`}
+                {`+-----------------------------+
+|  MCP client  (agent / IDE)  |
++--------------+--------------+
+               |  MCP over localhost
+               v
++-----------------------------+
+|  mcreator-agent  (local)    |
+|  * tools  * resources       |
+|  * diagnostics * validators |
++--------------+--------------+
+               |  reads / proposes edits
+               v
++-----------------------------+
+|  Your MCreator workspace    |
+|  ./my-mod/                  |
++-----------------------------+`}
               </pre>
               <div className="mt-3 font-mono text-[11px] text-muted-foreground">
                 Illustrative diagram. See{" "}

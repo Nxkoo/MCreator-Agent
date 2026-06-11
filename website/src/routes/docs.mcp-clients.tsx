@@ -33,6 +33,15 @@ const GENERIC = `{
   }
 }`;
 
+const CODEX = `{
+  "mcpServers": {
+    "mcreator-agent": {
+      "transport": "http",
+      "url": "http://localhost:5175/mcp"
+    }
+  }
+}`;
+
 const BRIDGE_WINDOWS = `{
   "mcpServers": {
     "mcreator-agent": {
@@ -44,15 +53,6 @@ const BRIDGE_WINDOWS = `{
         "-File",
         "D:\\\\path\\\\to\\\\MCreator-Agent\\\\scripts\\\\mcreator-mcp-bridge.ps1"
       ]
-    }
-  }
-}`;
-
-const CODEX = `{
-  "mcpServers": {
-    "mcreator-agent": {
-      "transport": "http",
-      "url": "http://localhost:5175/mcp"
     }
   }
 }`;
@@ -96,39 +96,36 @@ function Clients() {
   return (
     <DocsLayout eyebrow="Usage" title="MCP Clients">
       <p>
-        MCreator Agent exposes a local MCP HTTP endpoint while a workspace is open. Any HTTP-capable
-        MCP client can connect to it directly. Stdio-only clients can use the included PowerShell
-        bridge.
+        MCreator Agent exposes a local MCP HTTP endpoint while a workspace is open. Connect your MCP client directly to it using the generic HTTP URL.
       </p>
 
       <ConfigSnippet
         id="generic"
-        title="Generic MCP HTTP endpoint"
+        title="Generic HTTP endpoint"
         code={GENERIC}
-        note="Drop this into any client that accepts a url-based MCP server entry."
-      />
-
-      <ConfigSnippet
-        id="bridge-windows"
-        title="Windows stdio bridge"
-        code={BRIDGE_WINDOWS}
-        note="Use this for clients that launch MCP servers over stdio. Replace the script path with your local checkout path."
+        note="The primary setup. Drop this into Claude Desktop, Cursor, or any client that accepts a URL-based MCP server entry."
       />
 
       <ConfigSnippet
         id="codex"
-        title="Codex / HTTP clients"
+        title="Codex / specialized clients"
         code={CODEX}
-        note="Any HTTP-based MCP client works the same way. Adjust the host or port if your client requires it."
+        note="If your client explicitly requires a transport field, adjust your configuration as needed."
       />
 
       <h2 className="mt-12 text-2xl text-foreground">Port discovery</h2>
       <p>
         MCreator Agent prefers <code>5175</code>. If that port is in use, it picks a free local port
-        and writes it to <code>%USERPROFILE%\.mcreator\mcp\port</code>. The PowerShell bridge reads
-        this file automatically unless you pass <code>-Endpoint</code>, set{" "}
-        <code>MCREATOR_MCP_URL</code>, or set <code>MCREATOR_MCP_PORT</code>.
+        and writes it to a file. Match the port in your client config to the port written to:
       </p>
+      <ul className="list-disc space-y-1.5 pl-5">
+        <li>
+          <strong>Windows:</strong> <code>%USERPROFILE%\\.mcreator\\mcp\\port</code>
+        </li>
+        <li>
+          <strong>macOS / Linux:</strong> <code>~/.mcreator/mcp/port</code>
+        </li>
+      </ul>
 
       {/* VERIFY ENDPOINT */}
       <section
@@ -211,6 +208,14 @@ function Clients() {
           workspace in MCreator, then retry the tool call.
         </li>
       </ul>
+
+      <hr className="my-10 border-border" />
+
+      <h2 className="mt-10 text-2xl text-foreground">Advanced: stdio fallback</h2>
+      <p>
+        If your client only supports MCP over stdio (not HTTP URLs), you can use the included PowerShell bridge script. Replace the script path below with your local checkout path.
+      </p>
+      <CodeBlock filename="mcp.json" language="json" code={BRIDGE_WINDOWS} />
 
       <Callout variant="local">
         The server binds on the local loopback host. Workspace resources are scoped to the active

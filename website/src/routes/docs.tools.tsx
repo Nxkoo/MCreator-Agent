@@ -113,17 +113,17 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         name: "importGeckoLibAssets",
         kind: "GECKOLIB",
         purpose: "Import local model / animation files into the workspace under validated paths.",
-        args: `{ assets: { sourcePath: string, kind: string, textureSubdir?: string }[], overwrite?: boolean }`,
+        args: `{ assets: { sourcePath: string, targetName?: string, kind: "geo_model" | "geo" | "animation" | "texture", textureSubdir?: string }[], overwrite?: boolean }`,
         notes:
           "Supported kinds include geo_model, animation, and texture. Geo and animation JSON are parsed before commit.",
       },
       {
         name: "createGeckoLibElement",
         kind: "GECKOLIB",
-        purpose: "Create a supported GeckoLib animated element.",
+        purpose: "Assist with creating/scaffolding a supported GeckoLib animated element.",
         args: `{ elementType: string, elementName: string, definition?: object }`,
         notes:
-          "Supported types: animatedentity, animateditem, animatedblock, animatedarmor. Public fields from definition are applied conservatively.",
+          "Supported types: animatedentity, animateditem, animatedblock, animatedarmor. Public fields from definition are applied conservatively. Some plugin-specific fields may still need to be configured in the MCreator UI.",
       },
       {
         name: "validateGeckoLibElement",

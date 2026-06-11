@@ -48,7 +48,8 @@ function Trouble() {
         <li>Confirm the MCreator Agent status reports the server as running.</li>
         <li>
           Match the port in your client config to the port written to{" "}
-          <code>%USERPROFILE%\.mcreator\mcp\port</code>.
+          <code>%USERPROFILE%\.mcreator\mcp\port</code> (Windows) or{" "}
+          <code>~/.mcreator/mcp/port</code> (macOS / Linux).
         </li>
         <li>Use the URL form in your client:</li>
       </ul>

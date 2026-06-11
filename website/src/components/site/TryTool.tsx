@@ -85,6 +85,36 @@ const DEMOS: Demo[] = [
     ],
   },
   {
+    id: "setModElementLock",
+    name: "setModElementLock",
+    kind: "WRITE",
+    params: [
+      {
+        name: "elementName",
+        type: "string",
+        required: true,
+        placeholder: "copper_hammer",
+        help: "Name of the element to lock or unlock.",
+      },
+      {
+        name: "locked",
+        type: "enum",
+        required: true,
+        options: ["true", "false"],
+        default: "true",
+        help: "Desired code lock state.",
+      },
+    ],
+    presets: [
+      { id: "lock", label: "Lock code", values: { elementName: "copper_hammer", locked: "true" } },
+      { id: "unlock", label: "Unlock code", values: { elementName: "copper_hammer", locked: "false" } },
+    ],
+    respond: (a) => [
+      `→ executing setModElementLock`,
+      `✓ element '${a.elementName || "copper_hammer"}' locked state set to ${a.locked || "true"}`,
+    ],
+  },
+  {
     id: "buildWorkspace",
     name: "buildWorkspace",
     kind: "ACTION",
@@ -255,7 +285,8 @@ export function TryTool() {
                   }`}
                 >
                   <span
-                    className={`font-mono text-[12px] ${active ? "text-primary" : "text-foreground"}`}
+                    className={`min-w-0 truncate font-mono text-[12px] ${active ? "text-primary" : "text-foreground"}`}
+                    title={d.name}
                   >
                     {d.name}
                   </span>

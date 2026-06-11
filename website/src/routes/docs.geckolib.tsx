@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DocsLayout } from "@/components/site/DocsLayout";
 import { Callout } from "@/components/site/Callout";
+import { CodeBlock } from "@/components/site/CodeBlock";
 
 export const Route = createFileRoute("/docs/geckolib")({
   head: () => ({
@@ -24,24 +25,6 @@ export const Route = createFileRoute("/docs/geckolib")({
   component: Gecko,
 });
 
-const WORKFLOW = [
-  ["Check status", "Call getGeckoLibStatus to confirm the plugin is installed and active."],
-  ["List assets", "Use listGeckoLibAssets to enumerate models, animations, and textures."],
-  [
-    "Import assets",
-    "Import finished model, animation, or texture files with importGeckoLibAssets.",
-  ],
-  [
-    "Create / scaffold element",
-    "Scaffold a new GeckoLib-aware element with createGeckoLibElement.",
-  ],
-  [
-    "Validate references",
-    "Run validateGeckoLibElement to catch unsupported types and missing known model/texture references.",
-  ],
-  ["Build", "Run buildWorkspace to confirm the workspace still compiles."],
-] as const;
-
 function Gecko() {
   return (
     <DocsLayout eyebrow="Usage" title="GeckoLib workflow">
@@ -56,40 +39,92 @@ function Gecko() {
         approve.
       </Callout>
 
+      <h2 className="mt-10 text-2xl text-foreground">Requirements</h2>
+      <ul className="list-disc space-y-1 pl-5">
+        <li>
+          <strong className="text-foreground">Nerdy's GeckoLib Plugin</strong> installed in MCreator.
+        </li>
+        <li>
+          <strong className="text-foreground">GeckoLib API</strong> enabled in your workspace settings.
+        </li>
+      </ul>
+
       <h2 className="mt-10 text-2xl text-foreground">Workflow</h2>
-      <ol className="mt-4 space-y-3">
-        {WORKFLOW.map(([title, body], i) => (
-          <li key={title} className="flex gap-4 rounded-md border border-border bg-surface p-4">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded border border-primary/40 font-mono text-[12px] text-primary">
-              {i + 1}
-            </span>
-            <div>
-              <div className="text-foreground">{title}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{body}</div>
-            </div>
-          </li>
-        ))}
+      <ol className="list-decimal space-y-2 pl-5">
+        <li><strong>Check status</strong>: Call <code>getGeckoLibStatus</code> to confirm the plugin is installed and active.</li>
+        <li><strong>List assets</strong>: Use <code>listGeckoLibAssets</code> to enumerate models, animations, and textures.</li>
+        <li><strong>Import assets</strong>: Import finished model, animation, or texture files with <code>importGeckoLibAssets</code>.</li>
+        <li><strong>Create / scaffold element</strong>: Scaffold a new GeckoLib-aware element with <code>createGeckoLibElement</code>.</li>
+        <li><strong>Validate references</strong>: Run <code>validateGeckoLibElement</code> to catch unsupported types and missing known model/texture references.</li>
+        <li><strong>Build</strong>: Run <code>buildWorkspace</code> to confirm the workspace still compiles.</li>
       </ol>
 
-      <h2 className="mt-10 text-2xl text-foreground">What's supported</h2>
-      <ul className="list-disc space-y-2 pl-5">
-        <li>
-          <strong className="text-foreground">Diagnostics.</strong> Read-only checks for plugin/API
-          availability, supported animated element types, and known model/texture references.
-        </li>
-        <li>
-          <strong className="text-foreground">Asset listing &amp; import.</strong> Enumerate
-          GeckoLib assets and import new model / animation files under validated paths.
-        </li>
-        <li>
-          <strong className="text-foreground">Creation assistance.</strong> Scaffold a new GeckoLib
-          element when explicitly asked. Supported types are <code>animatedentity</code>,{" "}
-          <code>animateditem</code>, <code>animatedblock</code>, and <code>animatedarmor</code>.
-        </li>
-        <li>
-          <strong className="text-foreground">Validation.</strong> Re-check after edits to confirm
-          nothing regressed.
-        </li>
+      <h2 className="mt-10 text-2xl text-foreground">Examples</h2>
+      
+      <h3 className="mt-6 text-xl text-foreground">getGeckoLibStatus</h3>
+      <p>Returns whether the GeckoLib plugin and API are ready.</p>
+      <CodeBlock language="json" code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "getGeckoLibStatus",
+    "arguments": {}
+  }
+}`} />
+
+      <h3 className="mt-6 text-xl text-foreground">listGeckoLibAssets</h3>
+      <p>Returns all known GeckoLib models, animations, and textures in the workspace.</p>
+      <CodeBlock language="json" code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "listGeckoLibAssets",
+    "arguments": {}
+  }
+}`} />
+
+      <h3 className="mt-6 text-xl text-foreground">importGeckoLibAssets</h3>
+      <p>Import finished blockbench exports.</p>
+      <CodeBlock language="json" code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "importGeckoLibAssets",
+    "arguments": {
+      "assets": [
+        { "sourcePath": "C:/downloads/my_model.geo.json", "targetName": "my_model", "kind": "geo_model" }
+      ]
+    }
+  }
+}`} />
+
+      <h3 className="mt-6 text-xl text-foreground">createGeckoLibElement</h3>
+      <p>Assist with scaffolding a supported GeckoLib animated element.</p>
+      <CodeBlock language="json" code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "createGeckoLibElement",
+    "arguments": {
+      "elementType": "animatedentity",
+      "elementName": "MyCustomMob",
+      "definition": { "animModel": "my_model" }
+    }
+  }
+}`} />
+
+      <h3 className="mt-6 text-xl text-foreground">validateGeckoLibElement</h3>
+      <p>Check if the element's configured model or texture references exist.</p>
+      <CodeBlock language="json" code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "validateGeckoLibElement",
+    "arguments": {
+      "elementName": "MyCustomMob"
+    }
+  }
+}`} />
+
+      <h2 className="mt-10 text-2xl text-foreground">What still needs MCreator UI</h2>
+      <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
+        <li>Some plugin-specific fields may not be supported by scaffolding and require manual configuration in MCreator UI.</li>
+        <li>Setting up complex AI tasks, specific procedure triggers, and fine-tuning hitbox properties.</li>
       </ul>
 
       <h2 className="mt-10 text-2xl text-foreground">What's not in scope (yet)</h2>

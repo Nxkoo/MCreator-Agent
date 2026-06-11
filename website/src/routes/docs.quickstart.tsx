@@ -47,9 +47,6 @@ function Quickstart() {
         <li>MCreator Agent plugin installed.</li>
         <li>A workspace open in MCreator.</li>
         <li>An MCP-compatible client (Claude Desktop, Cursor, Codex, or similar).</li>
-        <li>
-          Java 21+ on your <code>PATH</code>.
-        </li>
       </ul>
 
       <h2 className="mt-10 text-2xl text-foreground">Steps</h2>
@@ -80,7 +77,7 @@ function Quickstart() {
       />
       <Callout variant="note">
         The preferred local port is shown above. If it is busy, the plugin chooses a free port and
-        writes it to <code>%USERPROFILE%\.mcreator\mcp\port</code>.
+        writes it to <code>%USERPROFILE%\\.mcreator\\mcp\\port</code> (Windows) or <code>~/.mcreator/mcp/port</code> (macOS / Linux).
       </Callout>
 
       <h2 className="mt-10 text-2xl text-foreground">Expected result</h2>

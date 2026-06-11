@@ -19,9 +19,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-sm border border-primary/50 bg-primary/10 font-mono text-[12px] font-semibold text-primary">
-            M
-          </span>
+          <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="MCreator Agent" className="h-7 w-7" />
           <span className="text-[15px] tracking-tight text-foreground">
             <span className="font-display italic">MCreator</span>
             <span className="ml-1 font-sans font-medium">Agent</span>

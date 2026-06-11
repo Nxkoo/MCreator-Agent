@@ -100,6 +100,13 @@ const INDEX: Entry[] = [
   },
   {
     group: "Tools",
+    title: "setModElementLock",
+    hint: "WRITE · set code lock state",
+    to: "/docs/tools",
+    boost: 3,
+  },
+  {
+    group: "Tools",
     title: "regenerateCode",
     hint: "ACTION · MCreator code regen",
     to: "/docs/tools",

@@ -32,28 +32,28 @@ function Arch() {
       <h2 className="mt-10 text-2xl text-foreground">Local-only diagram</h2>
       <CodeBlock
         language="text"
-        code={`┌──────────────────────────────────┐
-│  Your machine                    │
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │  MCP client (agent / IDE)  │  │
-│  └─────────────┬──────────────┘  │
-│                │  http://localhost
-│                ▼                 │
-│  ┌────────────────────────────┐  │
-│  │  MCreator                  │  │
-│  │  └─ MCreator Agent plugin  │  │
-│  │     • tools  • resources   │  │
-│  │     • diagnostics          │  │
-│  └─────────────┬──────────────┘  │
-│                │  in-process     │
-│                ▼                 │
-│  ┌────────────────────────────┐  │
-│  │  Active workspace          │  │
-│  │  ./my-mod/                 │  │
-│  └────────────────────────────┘  │
-│                                  │
-└──────────────────────────────────┘`}
+        code={`+----------------------------------+
+|  Your machine                    |
+|                                  |
+|  +----------------------------+  |
+|  |  MCP client (agent / IDE)  |  |
+|  +-------------+--------------+  |
+|                |  http://localhost
+|                v                 |
+|  +----------------------------+  |
+|  |  MCreator                  |  |
+|  |  |- MCreator Agent plugin  |  |
+|  |     * tools  * resources   |  |
+|  |     * diagnostics          |  |
+|  +-------------+--------------+  |
+|                |  in-process     |
+|                v                 |
+|  +----------------------------+  |
+|  |  Active workspace          |  |
+|  |  ./my-mod/                 |  |
+|  +----------------------------+  |
+|                                  |
++----------------------------------+`}
       />
 
       <h2 className="mt-10 text-2xl text-foreground">What runs inside MCreator</h2>

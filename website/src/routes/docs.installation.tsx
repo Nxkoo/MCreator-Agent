@@ -42,7 +42,7 @@ function Install() {
       <p>
         Download{" "}
         <a
-          href="/downloads/MCreator-Agent-1.0.0-2024.4.zip"
+          href={`${import.meta.env.BASE_URL}downloads/MCreator-Agent-1.0.0-2024.4.zip`}
           download
           className="text-primary hover:underline"
         >
