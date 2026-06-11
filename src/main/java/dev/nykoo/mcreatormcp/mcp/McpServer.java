@@ -249,12 +249,12 @@ public class McpServer {
         tools.add(createTool("importGeckoLibAssets", "Import GeckoLib model, animation, and texture assets transactionally",
             Map.of("type", "object",
                    "properties", Map.of(
-                       "assets", Map.of("type", "array", "description", "Assets to import"),
+                       "assets", Map.of("type", "array", "description", "Assets to import. Each item should have sourcePath, kind (geo_model, geo, animation, texture), textureSubdir, and optionally targetName."),
                        "overwrite", Map.of("type", "boolean", "description", "Whether existing target files can be replaced")
                    ),
                    "required", List.of("assets"))));
 
-        tools.add(createTool("createGeckoLibElement", "Create a GeckoLib animated element conservatively",
+        tools.add(createTool("createGeckoLibElement", "Create a GeckoLib animated element conservatively. Some plugin-specific fields may still need to be configured in the MCreator UI.",
             Map.of("type", "object",
                    "properties", Map.of(
                        "elementType", Map.of("type", "string", "description", "animatedentity, animateditem, animatedblock, or animatedarmor"),

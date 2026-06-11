@@ -417,7 +417,7 @@ public class MCPToolsService {
 
     private McpTypes.ToolResult createGeckoLibElement(MCreator mcreator, Map<String, Object> params) {
         try {
-            return createSuccessResult(geckoLibSupportService.createElement(mcreator, params));
+            return createJsonResult(geckoLibSupportService.createElement(mcreator, params));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return createErrorResult(e.getMessage());
         } catch (Exception e) {

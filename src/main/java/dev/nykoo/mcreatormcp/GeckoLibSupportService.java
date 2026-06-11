@@ -14,6 +14,11 @@ import net.mcreator.ui.workspace.resources.TextureType;
 import net.mcreator.workspace.Workspace;
 import net.mcreator.workspace.WorkspaceFolderManager;
 import net.mcreator.workspace.elements.ModElement;
+import net.mcreator.element.parts.MItemBlock;
+import net.mcreator.element.parts.Sound;
+import net.mcreator.element.parts.procedure.LogicProcedure;
+import net.mcreator.element.parts.procedure.NumberProcedure;
+import net.mcreator.element.parts.procedure.Procedure;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
@@ -190,7 +195,7 @@ public final class GeckoLibSupportService {
         return new ValidationResult(problems.isEmpty(), element.getName(), elementType, problems, warnings);
     }
 
-    public String createElement(MCreator mcreator, Map<String, Object> params) {
+    public CreateElementResult createElement(MCreator mcreator, Map<String, Object> params) {
         String elementType = stringParam(params, "elementType");
         String elementName = stringParam(params, "elementName");
         if (elementType == null || elementType.isBlank()) {
@@ -235,18 +240,19 @@ public final class GeckoLibSupportService {
         ModElementType<?> type = findModElementType(normalizedElementType)
                 .orElseThrow(() -> new IllegalStateException("GeckoLib element type is not registered: "
                         + normalizedElementType));
-        GeneratableElement elementDefinition = instantiateStorage(workspace, elementName.trim(), type, params);
-        ModElement modElement = elementDefinition.getModElement();
+        InstantiatedStorage storage = instantiateStorage(workspace, elementName.trim(), type, params);
+        ModElement modElement = storage.definition().getModElement();
 
         runQuickEdtMutation(() -> {
             workspace.addModElement(modElement);
-            workspace.getModElementManager().storeModElement(elementDefinition);
+            workspace.getModElementManager().storeModElement(storage.definition());
             workspace.markDirty();
             refreshWorkspaceUi(mcreator);
         });
 
-        return "Created GeckoLib element '" + elementName.trim()
+        String message = "Created GeckoLib element '" + elementName.trim()
                 + "'. It may still need to be opened in the MCreator editor to configure plugin-specific fields and asset references.";
+        return new CreateElementResult(message, storage.appliedDefaults(), storage.warnings());
     }
 
     public AssetRoots assetRootsForWorkspace(Workspace workspace) {
@@ -341,7 +347,10 @@ public final class GeckoLibSupportService {
         }
 
         String kind = entry.kind();
-        String fileName = source.getFileName().toString();
+        if ("geo".equals(kind)) {
+            kind = "geo_model";
+        }
+        String fileName = entry.targetName() != null && !entry.targetName().isBlank() ? entry.targetName() : source.getFileName().toString();
         Path targetDir;
         if ("geo_model".equals(kind)) {
             expectSuffix(fileName, ".geo.json", "Expected .geo.json for geo_model asset");
@@ -445,7 +454,7 @@ public final class GeckoLibSupportService {
     }
 
     @SuppressWarnings("unchecked")
-    private GeneratableElement instantiateStorage(Workspace workspace, String elementName, ModElementType<?> type,
+    private InstantiatedStorage instantiateStorage(Workspace workspace, String elementName, ModElementType<?> type,
             Map<String, Object> params) {
         try {
             ModElement modElement = new ModElement(workspace, elementName, type);
@@ -453,8 +462,11 @@ public final class GeckoLibSupportService {
                     (Class<? extends GeneratableElement>) type.getModElementStorageClass();
             Constructor<? extends GeneratableElement> constructor = storageClass.getConstructor(ModElement.class);
             GeneratableElement definition = constructor.newInstance(modElement);
+            List<String> appliedDefaults = applyKnownSafeDefaults(workspace, definition);
             applySafeDefinition(workspace, definition, params == null ? null : params.get("definition"));
-            return definition;
+            List<String> validationWarnings = validateDefinitionForGeneration(definition);
+
+            return new InstantiatedStorage(definition, appliedDefaults, validationWarnings);
         } catch (Exception e) {
             throw new IllegalStateException("Could not create GeckoLib element storage safely: " + e.getMessage(), e);
         }
@@ -485,6 +497,8 @@ public final class GeckoLibSupportService {
                 field.set(definition, number.intValue());
             } else if ((field.getType() == double.class || field.getType() == Double.class) && value instanceof Number number) {
                 field.set(definition, number.doubleValue());
+            } else if ((field.getType() == float.class || field.getType() == Float.class) && value instanceof Number number) {
+                field.set(definition, number.floatValue());
             } else if ((field.getType() == boolean.class || field.getType() == Boolean.class) && value instanceof Boolean) {
                 field.set(definition, value);
             } else if (List.class.isAssignableFrom(field.getType()) && value instanceof List<?>) {
@@ -516,6 +530,124 @@ public final class GeckoLibSupportService {
             } catch (Exception ignored) {
             }
         }
+    }
+
+    private List<String> applyKnownSafeDefaults(Workspace workspace, GeneratableElement definition) {
+        List<String> appliedDefaults = new ArrayList<>();
+        Class<?> clazz = definition.getClass();
+
+        while (clazz != null && clazz != Object.class) {
+            for (Field field : clazz.getDeclaredFields()) {
+                int modifiers = field.getModifiers();
+                if (java.lang.reflect.Modifier.isStatic(modifiers) || java.lang.reflect.Modifier.isFinal(modifiers)
+                        || java.lang.reflect.Modifier.isTransient(modifiers) || field.isSynthetic()) {
+                    continue;
+                }
+
+                try {
+                    field.setAccessible(true);
+                    if (field.get(definition) != null) {
+                        continue;
+                    }
+
+                    String name = field.getName();
+                    Object defaultValue = null;
+
+                    switch (name) {
+                        case "aixml":
+                            defaultValue = "<xml xmlns=\"https://developers.google.com/blockly/xml\"><block type=\"aitasks_container\" deletable=\"false\" x=\"40\" y=\"40\"></block></xml>";
+                            break;
+                        case "mobModelGlowTexture":
+                            defaultValue = "";
+                            break;
+                        case "equipmentMainHand":
+                        case "equipmentOffHand":
+                        case "equipmentHelmet":
+                        case "equipmentBody":
+                        case "equipmentLeggings":
+                        case "equipmentBoots":
+                        case "mobDrop":
+                        case "rangedAttackItem":
+                            defaultValue = new MItemBlock(workspace, "");
+                            break;
+                        case "breedTriggerItems":
+                            defaultValue = new ArrayList<MItemBlock>();
+                            break;
+                        case "livingSound":
+                        case "hurtSound":
+                        case "deathSound":
+                        case "stepSound":
+                        case "raidCelebrationSound":
+                            defaultValue = new Sound(workspace, "");
+                            break;
+                        case "transparentModelCondition":
+                        case "isShakingCondition":
+                        case "solidBoundingBox":
+                            defaultValue = new LogicProcedure(null, false);
+                            break;
+                        case "visualScale":
+                        case "boundingBoxScale":
+                            defaultValue = new NumberProcedure(null, 1.0);
+                            break;
+                        case "onStruckByLightning":
+                        case "whenMobFalls":
+                        case "whenMobDies":
+                        case "whenMobIsHurt":
+                        case "onRightClickedOn":
+                        case "whenThisMobKillsAnother":
+                        case "onMobTickUpdate":
+                        case "onPlayerCollidesWith":
+                        case "onInitialSpawn":
+                        case "spawningCondition":
+                            defaultValue = new Procedure(null);
+                            break;
+                    }
+
+                    if (defaultValue != null) {
+                        field.set(definition, defaultValue);
+                        appliedDefaults.add(name);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+        return appliedDefaults;
+    }
+
+    private List<String> validateDefinitionForGeneration(GeneratableElement definition) {
+        List<String> warnings = new ArrayList<>();
+        Class<?> clazz = definition.getClass();
+
+        while (clazz != null && clazz != Object.class) {
+            for (Field field : clazz.getDeclaredFields()) {
+                int modifiers = field.getModifiers();
+                if (java.lang.reflect.Modifier.isStatic(modifiers) || java.lang.reflect.Modifier.isFinal(modifiers)
+                        || java.lang.reflect.Modifier.isTransient(modifiers) || field.isSynthetic()) {
+                    continue;
+                }
+
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(definition);
+                    String name = field.getName();
+
+                    if (value == null) {
+                        if (name.equals("aixml") || name.startsWith("equipment") || name.endsWith("Sound")) {
+                            warnings.add("Field '" + name + "' is null. This might cause code generation errors.");
+                        }
+                    } else if ("aixml".equals(name) && value instanceof String xml) {
+                        if (!xml.trim().startsWith("<xml") || !xml.trim().endsWith("</xml>")) {
+                            warnings.add("Field 'aixml' does not contain valid Blockly XML. This might cause Blockly parser errors.");
+                        }
+                    }
+                } catch (Exception e) {
+                    warnings.add("Could not inspect field '" + field.getName() + "' during validation: " + e.getMessage());
+                }
+            }
+            clazz = clazz.getSuperclass();
+        }
+        return warnings;
     }
 
     private void runQuickEdtMutation(Runnable action) {
@@ -571,7 +703,10 @@ public final class GeckoLibSupportService {
                                  List<String> orphanCandidates, List<String> warnings) {
     }
 
-    public record AssetImportEntry(String sourcePath, String kind, String textureSubdir) {
+    public record AssetImportEntry(String sourcePath, String kind, String textureSubdir, String targetName) {
+        public AssetImportEntry(String sourcePath, String kind, String textureSubdir) {
+            this(sourcePath, kind, textureSubdir, null);
+        }
     }
 
     public record AssetImportRequest(List<AssetImportEntry> assets, boolean overwrite) {
@@ -583,6 +718,12 @@ public final class GeckoLibSupportService {
 
     public record ValidationResult(boolean valid, String elementName, String elementType, List<String> problems,
                                    List<String> warnings) {
+    }
+
+    public record CreateElementResult(String message, List<String> appliedDefaults, List<String> validationWarnings) {
+    }
+
+    private record InstantiatedStorage(GeneratableElement definition, List<String> appliedDefaults, List<String> warnings) {
     }
 
     private record PreparedAsset(String kind, Path source, Path target, Path relativeTarget, boolean skip,

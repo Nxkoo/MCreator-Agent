@@ -147,6 +147,33 @@ class GeckoLibSupportServiceTest {
     }
 
     @Test
+    void assetImportHandlesTargetNameAndGeoAlias() throws Exception {
+        Path workspace = tempDir.resolve("workspace");
+        Path models = workspace.resolve("models");
+        Path animations = workspace.resolve("models").resolve("animations");
+        Path itemTextures = workspace.resolve("src/main/resources/assets/testmod/textures/item");
+        Files.createDirectories(models);
+        Files.createDirectories(animations);
+        Files.createDirectories(itemTextures);
+
+        Path model = tempDir.resolve("some_weird_name.json");
+        Files.writeString(model, "{\"format_version\":\"1.12.0\"}");
+
+        GeckoLibSupportService.AssetImportResult result = new GeckoLibSupportService().importAssets(
+                assetRoots(workspace, models, animations, itemTextures),
+                new GeckoLibSupportService.AssetImportRequest(
+                        List.of(
+                                new GeckoLibSupportService.AssetImportEntry(model.toString(), "geo", null, "custom.geo.json")
+                        ),
+                        false
+                )
+        );
+
+        assertEquals(1, result.imported().size());
+        assertTrue(Files.exists(models.resolve("custom.geo.json")));
+    }
+
+    @Test
     void assetImportSkipsDuplicateWhenOverwriteIsFalse() throws Exception {
         Path workspace = tempDir.resolve("workspace");
         Path models = workspace.resolve("models");
