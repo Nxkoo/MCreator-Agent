@@ -14,6 +14,7 @@ import {
   LifeBuoy,
   Github,
   ScrollText,
+  BookMarked,
 } from "lucide-react";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
@@ -35,6 +36,10 @@ const GROUPS = [
       { to: "/docs/tools", label: "Tools", Icon: Terminal },
       { to: "/docs/geckolib", label: "GeckoLib", Icon: Boxes },
     ],
+  },
+  {
+    label: "Resources",
+    items: [{ to: "/docs/mcreator-skill", label: "MCreator Skill", Icon: BookMarked }],
   },
   {
     label: "Reference",

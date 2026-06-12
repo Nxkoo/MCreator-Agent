@@ -525,6 +525,69 @@ function Home() {
         </div>
       </section>
 
+      {/* MCREATOR SKILL */}
+      <section className="border-b border-border/60">
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+          <SectionLabel>09 · Companion skill</SectionLabel>
+          <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+            <div>
+              <h2 className="text-4xl text-foreground md:text-5xl">
+                A companion skill for agents.
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Pair MCreator Agent with MCreator Skill to give your coding agent stronger
+                MCreator-specific context, safer workflow rules, and better GeckoLib guidance.
+              </p>
+              <p className="mt-4 font-mono text-[11px] text-muted-foreground">
+                MCreator Skill guides behavior. MCreator Agent provides local MCP tools.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  to="/skill"
+                  className="inline-flex items-center gap-2 rounded border border-primary/50 bg-primary/15 px-4 py-2 font-mono text-xs uppercase tracking-wider text-primary transition hover:bg-primary/25"
+                >
+                  View MCreator Skill <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <a
+                  href="https://github.com/Nxkoo/mcreator-skill"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded border border-border px-4 py-2 font-mono text-xs uppercase tracking-wider text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                >
+                  <Github className="h-3.5 w-3.5" /> GitHub
+                </a>
+              </div>
+            </div>
+
+            <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-3">
+              {[
+                {
+                  Icon: ShieldCheck,
+                  title: "Skill-only",
+                  body: "Use with any coding agent for MCreator-aware guidance.",
+                },
+                {
+                  Icon: Network,
+                  title: "Skill + MCP",
+                  body: "Pair with MCreator Agent when you want local workspace tools.",
+                },
+                {
+                  Icon: Layers,
+                  title: "GeckoLib-aware",
+                  body: "Guide agents through safer animated workflow decisions.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="bg-background p-6">
+                  <item.Icon className="h-4 w-4 text-primary" />
+                  <h3 className="mt-3 text-xl text-foreground">{item.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section>
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">

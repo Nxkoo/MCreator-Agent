@@ -6,7 +6,11 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-2">
           <div className="flex items-center gap-2.5">
-            <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="MCreator Agent" className="h-7 w-7" />
+            <img
+              src={`${import.meta.env.BASE_URL}logo.svg`}
+              alt="MCreator Agent"
+              className="h-7 w-7"
+            />
             <span className="font-display italic text-lg">MCreator Agent</span>
           </div>
           <p className="mt-3 max-w-md text-sm text-muted-foreground">
@@ -49,6 +53,11 @@ export function SiteFooter() {
             <li>
               <Link to="/docs/mcp-clients" className="hover:text-primary">
                 MCP Clients
+              </Link>
+            </li>
+            <li>
+              <Link to="/docs/mcreator-skill" className="hover:text-primary">
+                MCreator Skill
               </Link>
             </li>
           </ul>

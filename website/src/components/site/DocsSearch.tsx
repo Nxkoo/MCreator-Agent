@@ -46,6 +46,13 @@ const INDEX: Entry[] = [
   },
   {
     group: "Pages",
+    title: "MCreator Skill",
+    hint: "Standalone agent guidance and MCP pairing",
+    to: "/docs/mcreator-skill",
+    boost: 2,
+  },
+  {
+    group: "Pages",
     title: "Architecture",
     hint: "Local-only diagram and safety model",
     to: "/docs/architecture",

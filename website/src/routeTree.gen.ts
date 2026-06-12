@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SkillRouteImport } from './routes/skill'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ContributingRouteImport } from './routes/contributing'
 import { Route as AboutRouteImport } from './routes/about'
@@ -18,12 +19,18 @@ import { Route as DocsTroubleshootingRouteImport } from './routes/docs.troublesh
 import { Route as DocsToolsRouteImport } from './routes/docs.tools'
 import { Route as DocsReleaseGuideRouteImport } from './routes/docs.release-guide'
 import { Route as DocsQuickstartRouteImport } from './routes/docs.quickstart'
+import { Route as DocsMcreatorSkillRouteImport } from './routes/docs.mcreator-skill'
 import { Route as DocsMcpClientsRouteImport } from './routes/docs.mcp-clients'
 import { Route as DocsInstallationRouteImport } from './routes/docs.installation'
 import { Route as DocsGeckolibRouteImport } from './routes/docs.geckolib'
 import { Route as DocsChangelogRouteImport } from './routes/docs.changelog'
 import { Route as DocsArchitectureRouteImport } from './routes/docs.architecture'
 
+const SkillRoute = SkillRouteImport.update({
+  id: '/skill',
+  path: '/skill',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
@@ -69,6 +76,11 @@ const DocsQuickstartRoute = DocsQuickstartRouteImport.update({
   path: '/quickstart',
   getParentRoute: () => DocsRoute,
 } as any)
+const DocsMcreatorSkillRoute = DocsMcreatorSkillRouteImport.update({
+  id: '/mcreator-skill',
+  path: '/mcreator-skill',
+  getParentRoute: () => DocsRoute,
+} as any)
 const DocsMcpClientsRoute = DocsMcpClientsRouteImport.update({
   id: '/mcp-clients',
   path: '/mcp-clients',
@@ -100,11 +112,13 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/contributing': typeof ContributingRoute
   '/docs': typeof DocsRouteWithChildren
+  '/skill': typeof SkillRoute
   '/docs/architecture': typeof DocsArchitectureRoute
   '/docs/changelog': typeof DocsChangelogRoute
   '/docs/geckolib': typeof DocsGeckolibRoute
   '/docs/installation': typeof DocsInstallationRoute
   '/docs/mcp-clients': typeof DocsMcpClientsRoute
+  '/docs/mcreator-skill': typeof DocsMcreatorSkillRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
   '/docs/release-guide': typeof DocsReleaseGuideRoute
   '/docs/tools': typeof DocsToolsRoute
@@ -115,11 +129,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contributing': typeof ContributingRoute
+  '/skill': typeof SkillRoute
   '/docs/architecture': typeof DocsArchitectureRoute
   '/docs/changelog': typeof DocsChangelogRoute
   '/docs/geckolib': typeof DocsGeckolibRoute
   '/docs/installation': typeof DocsInstallationRoute
   '/docs/mcp-clients': typeof DocsMcpClientsRoute
+  '/docs/mcreator-skill': typeof DocsMcreatorSkillRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
   '/docs/release-guide': typeof DocsReleaseGuideRoute
   '/docs/tools': typeof DocsToolsRoute
@@ -132,11 +148,13 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/contributing': typeof ContributingRoute
   '/docs': typeof DocsRouteWithChildren
+  '/skill': typeof SkillRoute
   '/docs/architecture': typeof DocsArchitectureRoute
   '/docs/changelog': typeof DocsChangelogRoute
   '/docs/geckolib': typeof DocsGeckolibRoute
   '/docs/installation': typeof DocsInstallationRoute
   '/docs/mcp-clients': typeof DocsMcpClientsRoute
+  '/docs/mcreator-skill': typeof DocsMcreatorSkillRoute
   '/docs/quickstart': typeof DocsQuickstartRoute
   '/docs/release-guide': typeof DocsReleaseGuideRoute
   '/docs/tools': typeof DocsToolsRoute
@@ -150,11 +168,13 @@ export interface FileRouteTypes {
     | '/about'
     | '/contributing'
     | '/docs'
+    | '/skill'
     | '/docs/architecture'
     | '/docs/changelog'
     | '/docs/geckolib'
     | '/docs/installation'
     | '/docs/mcp-clients'
+    | '/docs/mcreator-skill'
     | '/docs/quickstart'
     | '/docs/release-guide'
     | '/docs/tools'
@@ -165,11 +185,13 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/contributing'
+    | '/skill'
     | '/docs/architecture'
     | '/docs/changelog'
     | '/docs/geckolib'
     | '/docs/installation'
     | '/docs/mcp-clients'
+    | '/docs/mcreator-skill'
     | '/docs/quickstart'
     | '/docs/release-guide'
     | '/docs/tools'
@@ -181,11 +203,13 @@ export interface FileRouteTypes {
     | '/about'
     | '/contributing'
     | '/docs'
+    | '/skill'
     | '/docs/architecture'
     | '/docs/changelog'
     | '/docs/geckolib'
     | '/docs/installation'
     | '/docs/mcp-clients'
+    | '/docs/mcreator-skill'
     | '/docs/quickstart'
     | '/docs/release-guide'
     | '/docs/tools'
@@ -198,10 +222,18 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ContributingRoute: typeof ContributingRoute
   DocsRoute: typeof DocsRouteWithChildren
+  SkillRoute: typeof SkillRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/skill': {
+      id: '/skill'
+      path: '/skill'
+      fullPath: '/skill'
+      preLoaderRoute: typeof SkillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs': {
       id: '/docs'
       path: '/docs'
@@ -265,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsQuickstartRouteImport
       parentRoute: typeof DocsRoute
     }
+    '/docs/mcreator-skill': {
+      id: '/docs/mcreator-skill'
+      path: '/mcreator-skill'
+      fullPath: '/docs/mcreator-skill'
+      preLoaderRoute: typeof DocsMcreatorSkillRouteImport
+      parentRoute: typeof DocsRoute
+    }
     '/docs/mcp-clients': {
       id: '/docs/mcp-clients'
       path: '/mcp-clients'
@@ -309,6 +348,7 @@ interface DocsRouteChildren {
   DocsGeckolibRoute: typeof DocsGeckolibRoute
   DocsInstallationRoute: typeof DocsInstallationRoute
   DocsMcpClientsRoute: typeof DocsMcpClientsRoute
+  DocsMcreatorSkillRoute: typeof DocsMcreatorSkillRoute
   DocsQuickstartRoute: typeof DocsQuickstartRoute
   DocsReleaseGuideRoute: typeof DocsReleaseGuideRoute
   DocsToolsRoute: typeof DocsToolsRoute
@@ -322,6 +362,7 @@ const DocsRouteChildren: DocsRouteChildren = {
   DocsGeckolibRoute: DocsGeckolibRoute,
   DocsInstallationRoute: DocsInstallationRoute,
   DocsMcpClientsRoute: DocsMcpClientsRoute,
+  DocsMcreatorSkillRoute: DocsMcreatorSkillRoute,
   DocsQuickstartRoute: DocsQuickstartRoute,
   DocsReleaseGuideRoute: DocsReleaseGuideRoute,
   DocsToolsRoute: DocsToolsRoute,
@@ -336,6 +377,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ContributingRoute: ContributingRoute,
   DocsRoute: DocsRouteWithChildren,
+  SkillRoute: SkillRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
