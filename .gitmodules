@@ -1,0 +1,3 @@
+[submodule "skills/mcreator-skill"]
+	path = skills/mcreator-skill
+	url = https://github.com/Nxkoo/mcreator-skill.git
