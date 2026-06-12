@@ -10,13 +10,11 @@ export default defineConfig({
     tsconfigPaths(),
     tailwindcss(),
     tanstackStart({
-      server: {
-        preset: "github-pages",
-        prerender: {
-          routes: ["/"],
-          crawlLinks: true
-        }
-      },
+      prerender: {
+        enabled: true,
+        routes: ["/"],
+        crawlLinks: true
+      }
     }),
     react(),
   ],
