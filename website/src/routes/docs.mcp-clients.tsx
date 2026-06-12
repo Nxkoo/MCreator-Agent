@@ -51,7 +51,7 @@ const BRIDGE_WINDOWS = `{
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "D:\\\\path\\\\to\\\\MCreator-Agent\\\\scripts\\\\mcreator-mcp-bridge.ps1"
+        "D:\\\\path\\\\to\\\\MCreator-Agent\\\\scripts\\\\mcreator-agent-bridge.ps1"
       ]
     }
   }

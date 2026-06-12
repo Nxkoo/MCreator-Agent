@@ -1,7 +1,7 @@
-package dev.nykoo.mcreatormcp;
+package dev.nykoo.mcreatoragent;
 
-import dev.nykoo.mcreatormcp.mcp.McpHttpTransport;
-import dev.nykoo.mcreatormcp.mcp.McpServer;
+import dev.nykoo.mcreatoragent.mcp.McpHttpTransport;
+import dev.nykoo.mcreatoragent.mcp.McpServer;
 import net.mcreator.plugin.JavaPlugin;
 import net.mcreator.plugin.Plugin;
 import net.mcreator.plugin.events.workspace.MCreatorLoadedEvent;

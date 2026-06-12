@@ -1,7 +1,7 @@
-package dev.nykoo.mcreatormcp;
+package dev.nykoo.mcreatoragent;
 
-import dev.nykoo.mcreatormcp.mcp.McpServer;
-import dev.nykoo.mcreatormcp.mcp.McpTypes;
+import dev.nykoo.mcreatoragent.mcp.McpServer;
+import dev.nykoo.mcreatoragent.mcp.McpTypes;
 import net.mcreator.element.ModElementType;
 import net.mcreator.element.ModElementTypeLoader;
 import net.mcreator.workspace.Workspace;

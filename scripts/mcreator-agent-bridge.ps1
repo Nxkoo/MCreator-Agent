@@ -4,19 +4,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Resolve-MCreatorMcpEndpoint {
+function Resolve-MCreatorAgentEndpoint {
     param([string] $ConfiguredEndpoint)
 
     if (-not [string]::IsNullOrWhiteSpace($ConfiguredEndpoint)) {
         return $ConfiguredEndpoint
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($env:MCREATOR_MCP_URL)) {
-        return $env:MCREATOR_MCP_URL
+    if (-not [string]::IsNullOrWhiteSpace($env:MCREATOR_AGENT_URL)) {
+        return $env:MCREATOR_AGENT_URL
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($env:MCREATOR_MCP_PORT)) {
-        return "http://127.0.0.1:$($env:MCREATOR_MCP_PORT)/mcp"
+    if (-not [string]::IsNullOrWhiteSpace($env:MCREATOR_AGENT_PORT)) {
+        return "http://127.0.0.1:$($env:MCREATOR_AGENT_PORT)/mcp"
     }
 
     $portFile = Join-Path $env:USERPROFILE ".mcreator\mcp\port"
@@ -32,7 +32,7 @@ function Resolve-MCreatorMcpEndpoint {
     return "http://127.0.0.1:$port/mcp"
 }
 
-$resolvedEndpoint = Resolve-MCreatorMcpEndpoint $Endpoint
+$resolvedEndpoint = Resolve-MCreatorAgentEndpoint $Endpoint
 
 while ($null -ne ($line = [Console]::In.ReadLine())) {
     if ([string]::IsNullOrWhiteSpace($line)) {

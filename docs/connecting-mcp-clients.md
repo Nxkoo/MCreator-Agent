@@ -79,7 +79,7 @@ user `mcp.json` (global).
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "D:\\My Projects\\MCreator Agent\\scripts\\mcreator-mcp-bridge.ps1"
+        "D:\\My Projects\\MCreator Agent\\scripts\\mcreator-agent-bridge.ps1"
       ]
     }
   }
@@ -107,7 +107,7 @@ window (`Ctrl+Shift+P` → `Developer: Reload Window`).
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "D:\\My Projects\\MCreator Agent\\scripts\\mcreator-mcp-bridge.ps1"
+        "D:\\My Projects\\MCreator Agent\\scripts\\mcreator-agent-bridge.ps1"
       ]
     }
   }

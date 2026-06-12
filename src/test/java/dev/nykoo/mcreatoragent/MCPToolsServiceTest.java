@@ -1,4 +1,4 @@
-package dev.nykoo.mcreatormcp;
+package dev.nykoo.mcreatoragent;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package dev.nykoo.mcreatormcp.mcp;
+package dev.nykoo.mcreatoragent.mcp;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -209,7 +209,7 @@ public class McpHttpTransport {
 
             String health = "{\n" +
                 "  \"status\": \"ok\",\n" +
-                "  \"service\": \"MCreator MCP Server\",\n" +
+                "  \"service\": \"MCreator Agent\",\n" +
                 "  \"version\": \"1.0.0-2024.4\",\n" +
                 "  \"port\": " + port + ",\n" +
                 "  \"initialized\": " + mcpServer.isInitialized() + ",\n" +

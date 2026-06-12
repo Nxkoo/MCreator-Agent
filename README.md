@@ -187,7 +187,7 @@ Agent port, and forwards requests to the HTTP endpoint.
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "C:\\path\\to\\MCreator Agent\\scripts\\mcreator-mcp-bridge.ps1"
+        "C:\\path\\to\\MCreator Agent\\scripts\\mcreator-agent-bridge.ps1"
       ]
     }
   }
@@ -206,7 +206,7 @@ http://localhost:5175/mcp
 ```
 
 For clients that only support stdio MCP servers, configure them to run
-`scripts\mcreator-mcp-bridge.ps1` in the same way as the Claude Desktop bridge
+`scripts\mcreator-agent-bridge.ps1` in the same way as the Claude Desktop bridge
 example.
 
 ## Available Tools

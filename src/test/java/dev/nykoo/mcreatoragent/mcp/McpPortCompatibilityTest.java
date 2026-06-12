@@ -1,4 +1,4 @@
-package dev.nykoo.mcreatormcp.mcp;
+package dev.nykoo.mcreatoragent.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

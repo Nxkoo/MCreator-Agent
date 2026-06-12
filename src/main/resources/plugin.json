@@ -4,7 +4,7 @@
     2024004
   ],
   "weight": 0,
-  "javaplugin": "dev.nykoo.mcreatormcp.MCreatorAgent",
+  "javaplugin": "dev.nykoo.mcreatoragent.MCreatorAgent",
   "info": {
     "name": "MCreator Agent",
     "version": "1.0.0-2024.4",
