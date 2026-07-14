@@ -38,21 +38,30 @@ The status reports:
 - whether the GeckoLib Plugin is loaded
 - whether GeckoLib API is enabled in the workspace
 - whether the current generator exposes the GeckoLib API
-- whether the animated element types are registered
-- available animated element types
+- `registeredElementTypes`: canonical animated types registered by the plugin
+- `creatableElementTypes`: types that may be created now (workspace ready + registered; generator-supported when listed, otherwise falls back to registered)
+- `availableElementTypes`: backward-compatible alias of `registeredElementTypes`
+- `typesAvailable`: true when **all four** canonical types are registered (legacy full-plugin signal)
+- `anyTypeCreatable`: true when at least one type is creatable
+- `allTypesCreatable`: whether all four canonical types are creatable
+- `elementTypeAliases`: optional accepted input aliases; aliases are not required plugin registrations
 - diagnostic problems and debug details
 
 When the plugin is missing, the tools remain registered but report clear errors instead of crashing.
+
+The canonical plugin registry names are `animateditem`, `animatedentity`, `animatedblock`, and `animatedarmor`.
+Aliases such as `geckoitem` may be accepted as tool input, but status detection does not require or count aliases as
+registered plugin types.
 
 ## Asset Listing
 
 Use `listGeckoLibAssets` or read `workspace://geckolib/assets`.
 
-The scan is read-only and filesystem-based. It uses MCreator workspace resource locations, not generated runtime asset paths:
+The scan is read-only and filesystem-based. It merges **authoring** and **runtime** locations:
 
-- geo models: `<workspace>/models/*.geo.json`
-- animations: `<workspace>/models/animations/*.animation.json`
-- textures: directories returned by `WorkspaceFolderManager#getTexturesFolder(TextureType)`
+- geo models: `<workspace>/models/*.geo.json` and `src/main/resources/assets/<modid>/geo/*.geo.json`
+- animations: `<workspace>/models/animations/*.animation.json` and `src/main/resources/assets/<modid>/animations/*.animation.json`
+- textures: directories returned by `WorkspaceFolderManager#getTexturesFolder(TextureType)` (deduplicated)
 
 The response includes:
 
@@ -94,8 +103,8 @@ Example arguments:
 
 Supported kinds:
 
-- `geo_model`: requires `.geo.json`, imports into the workspace models directory.
-- `animation`: requires `.animation.json`, imports into the workspace model animations directory.
+- `geo_model`: requires `.geo.json`, dual-writes to `models/` (MCreator authoring) and `assets/<modid>/geo/` (runtime).
+- `animation`: requires `.animation.json`, dual-writes to `models/animations/` and `assets/<modid>/animations/`.
 - `texture`: requires `.png`, imports into a MCreator texture directory. If `textureSubdir` is omitted, `item` is used.
 
 Texture `textureSubdir` values are MCreator texture type IDs such as `item`, `block`, `entity`, and `armor`.
@@ -134,6 +143,19 @@ The tool validates:
 - `elementName` is a valid Java identifier and is not already used
 
 Creation is conservative. It creates the MCreator mod element and storage through generic MCreator APIs and reflection from the registered `ModElementType` storage class. It applies only simple public fields explicitly provided in `definition` and uses basic fallback names/models for known string fields.
+
+After creation, the tool force-saves through MCreator's workspace persistence API and reports independent
+postconditions:
+
+- `recognizedInMemory`
+- `definitionStored`
+- `definitionLoadable`
+- `workspaceEntryStored`
+- `confirmed`
+
+Each postcondition is `pass`, `fail`, or `unknown`. `confirmed` is true only when every postcondition passes. A
+failed or unknown postcondition does not trigger automatic rollback because the workspace may already contain useful
+partial state. Do not regenerate code while `confirmed` is false; inspect and reconcile the workspace first.
 
 After creation, open the element in the MCreator UI and configure plugin-specific fields and asset references.
 
@@ -179,6 +201,10 @@ Some plugin-specific fields cannot be inspected safely in the MVP. The response 
 9. Validate using `validateGeckoLibElement`.
 10. Regenerate code and build.
 
+Refreshing the workspace tab redraws the current in-memory model; it does not reload externally edited `.mcreator`
+or `elements/*.mod.json` files from disk. A successful Gradle build also does not prove that the open MCreator UI or
+MCP workspace model recognizes an element.
+
 ## Not Included In MVP
 
 - No `updateGeckoLibElement`.
@@ -195,4 +221,5 @@ Some plugin-specific fields cannot be inspected safely in the MVP. The response 
 - The upstream Git commit for the inspected zip was not confirmed because network access was blocked during research.
 - The plugin is archived upstream, so compatibility should be treated as best-effort for that artifact and MCreator 2024.4.
 - Full correctness of created animated elements still depends on opening them in MCreator UI and completing plugin-specific fields.
-- Runtime generated asset paths differ from workspace source resource paths. MCreator Agent imports into workspace resource directories and lets MCreator/generator handle generated runtime assets.
+- Geo/animation import dual-writes authoring (`models/`) and runtime (`assets/<modid>/geo|animations`) paths so both MCreator UI pickers and GeckoLib `ResourceLocation`s resolve.
+- Texture `entities` is accepted as an alias of MCreator texture type `entity`.

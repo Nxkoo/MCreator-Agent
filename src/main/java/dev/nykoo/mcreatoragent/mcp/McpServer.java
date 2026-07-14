@@ -257,7 +257,7 @@ public class McpServer {
         tools.add(createTool("createGeckoLibElement", "Create a GeckoLib animated element conservatively. Some plugin-specific fields may still need to be configured in the MCreator UI.",
             Map.of("type", "object",
                    "properties", Map.of(
-                       "elementType", Map.of("type", "string", "description", "animatedentity, animateditem, animatedblock, or animatedarmor"),
+                       "elementType", Map.of("type", "string", "description", "Canonical type animatedentity, animateditem, animatedblock, or animatedarmor. Legacy gecko* aliases are accepted as input only."),
                        "elementName", Map.of("type", "string", "description", "Name of the new element"),
                        "definition", Map.of("type", "object", "description", "Optional safe fields to initialize")
                    ),

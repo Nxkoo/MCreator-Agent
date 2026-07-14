@@ -210,7 +210,7 @@ public class McpHttpTransport {
             String health = "{\n" +
                 "  \"status\": \"ok\",\n" +
                 "  \"service\": \"MCreator Agent\",\n" +
-                "  \"version\": \"1.0.0-2024.4\",\n" +
+                "  \"version\": \"1.0.1-2024.4\",\n" +
                 "  \"port\": " + port + ",\n" +
                 "  \"initialized\": " + mcpServer.isInitialized() + ",\n" +
                 "  \"workspace\": " + (mcpServer.getWorkspace() != null ? "\"loaded\"" : "null") + "\n" +

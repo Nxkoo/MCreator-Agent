@@ -95,7 +95,12 @@ function Gecko() {
       <h2 className="mt-10 text-2xl text-foreground">Examples</h2>
 
       <h3 className="mt-6 text-xl text-foreground">getGeckoLibStatus</h3>
-      <p>Returns whether the GeckoLib plugin and API are ready.</p>
+      <p>
+        Returns plugin/API readiness plus canonical <code>registeredElementTypes</code> and{" "}
+        <code>creatableElementTypes</code>. The backward-compatible <code>typesAvailable</code>{" "}
+        field is true when all four canonical types are registered; use{" "}
+        <code>anyTypeCreatable</code> / <code>allTypesCreatable</code> for create readiness.
+      </p>
       <CodeBlock
         language="json"
         code={`{
@@ -173,7 +178,15 @@ function Gecko() {
       />
       <Callout variant="note">
         <code>createGeckoLibElement</code> assists with scaffolding. Some fields may still need to be
-        reviewed or completed in the MCreator UI.
+        reviewed or completed in the MCreator UI. Its response reports in-memory recognition,
+        definition persistence, workspace-entry persistence, and <code>confirmed</code>. Do not
+        regenerate when <code>confirmed</code> is false.
+      </Callout>
+
+      <Callout variant="warning">
+        Refreshing the workspace tab does not reload externally edited workspace metadata from disk.
+        A successful Gradle build also does not prove that the open MCreator UI or MCP model
+        recognizes the element.
       </Callout>
 
       <h3 className="mt-6 text-xl text-foreground">validateGeckoLibElement</h3>

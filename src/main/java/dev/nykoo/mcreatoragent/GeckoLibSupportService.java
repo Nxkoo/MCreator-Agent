@@ -1,6 +1,7 @@
 package dev.nykoo.mcreatoragent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import net.mcreator.element.GeneratableElement;
 import net.mcreator.element.ModElementType;
 import net.mcreator.element.ModElementTypeLoader;
@@ -33,8 +34,13 @@ public final class GeckoLibSupportService {
 
     public static final String PLUGIN_ID = "geckolib_plugin";
     public static final String API_ID = "geckolib";
-    public static final Set<String> ANIMATED_ELEMENT_TYPES = Set.of(
-            "animatedentity", "animateditem", "animatedblock", "animatedarmor");
+    public static final Set<String> ANIMATED_ELEMENT_TYPES = Collections.unmodifiableSet(new LinkedHashSet<>(List.of(
+            "animatedentity", "animateditem", "animatedblock", "animatedarmor")));
+    public static final Map<String, String> ELEMENT_TYPE_ALIASES = Map.of(
+            "geckoentity", "animatedentity",
+            "geckoitem", "animateditem",
+            "geckoblock", "animatedblock",
+            "geckoarmor", "animatedarmor");
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> TEXTURE_EXTENSIONS = Set.of(".png");
@@ -54,17 +60,20 @@ public final class GeckoLibSupportService {
             debug.put("pluginLoadFailure", plugin.getLoadFailure());
         }
 
-        List<String> availableElementTypes = findAvailableAnimatedElementTypes();
-        boolean typesAvailable = availableElementTypes.containsAll(ANIMATED_ELEMENT_TYPES);
-
         boolean apiEnabled = false;
         boolean generatorSupportsApi = false;
+        boolean generatorSupportedTypesKnown = false;
+        Set<String> generatorSupportedTypes = Set.of();
         if (workspace != null) {
             try {
                 apiEnabled = workspace.getWorkspaceSettings().getMCreatorDependenciesRaw().contains(API_ID);
                 String generatorName = workspace.getGeneratorConfiguration().getGeneratorName();
                 debug.put("generator", generatorName);
                 generatorSupportsApi = ModAPIManager.getModAPIForNameAndGenerator(API_ID, generatorName) != null;
+                generatorSupportedTypes = workspace.getGeneratorStats().getSupportedModElementTypes().stream()
+                        .map(ModElementType::getRegistryName)
+                        .collect(Collectors.toSet());
+                generatorSupportedTypesKnown = true;
             } catch (Exception e) {
                 problems.add("Could not inspect GeckoLib API support for the current workspace: " + e.getMessage());
             }
@@ -72,39 +81,74 @@ public final class GeckoLibSupportService {
             problems.add("No workspace loaded.");
         }
 
+        TypeAvailability availability = evaluateTypeAvailability(findRegisteredElementTypes(), generatorSupportedTypes,
+                pluginLoaded, apiEnabled, generatorSupportsApi);
+        Set<String> canonicalGeneratorSupported = canonicalRegistrationsFrom(generatorSupportedTypes);
+        boolean generatorListsAnyAnimated = ANIMATED_ELEMENT_TYPES.stream()
+                .anyMatch(canonicalGeneratorSupported::contains);
+
         if (!pluginLoaded) {
             problems.add("GeckoLib Plugin is not loaded.");
             problems.add("Install Nerdy's GeckoLib Plugin compatible with MCreator 2024.4.");
             problems.add("GeckoLib creation tools are registered but unavailable until the plugin is loaded.");
         }
-        if (pluginLoaded && !typesAvailable) {
-            problems.add("GeckoLib Plugin is loaded, but not all animated element types are registered.");
+        if (pluginLoaded && !availability.registeredElementTypes().containsAll(ANIMATED_ELEMENT_TYPES)) {
+            List<String> missing = ANIMATED_ELEMENT_TYPES.stream()
+                    .filter(type -> !availability.registeredElementTypes().contains(type))
+                    .toList();
+            problems.add("GeckoLib Plugin is loaded, but these canonical animated element types are not registered: "
+                    + missing);
         }
         if (pluginLoaded && workspace != null && !generatorSupportsApi) {
             problems.add("The current generator does not expose the GeckoLib API definition.");
+        }
+        if (pluginLoaded && workspace != null && generatorSupportedTypesKnown) {
+            if (generatorListsAnyAnimated) {
+                List<String> unsupportedByGenerator = availability.registeredElementTypes().stream()
+                        .filter(type -> !canonicalGeneratorSupported.contains(type))
+                        .toList();
+                if (!unsupportedByGenerator.isEmpty()) {
+                    problems.add("These registered GeckoLib element types are not supported by the current generator: "
+                            + unsupportedByGenerator);
+                }
+            } else if (!availability.registeredElementTypes().isEmpty() && availability.anyTypeCreatable()) {
+                debug.put("creatableUsedGeneratorFallback", true);
+            }
         }
         if (pluginLoaded && workspace != null && generatorSupportsApi && !apiEnabled) {
             problems.add("GeckoLib API is not enabled in this workspace. Enable it in Workspace Settings > Required APIs, then retry.");
         }
 
         debug.put("expectedElementTypes", new ArrayList<>(ANIMATED_ELEMENT_TYPES));
-        return new GeckoLibStatus(pluginLoaded, apiEnabled, generatorSupportsApi, typesAvailable,
-                availableElementTypes, problems, debug);
+        debug.put("generatorSupportedElementTypes", canonicalGeneratorSupported.stream().sorted().toList());
+        debug.put("generatorSupportedElementTypesKnown", generatorSupportedTypesKnown);
+        debug.put("generatorListsAnyAnimatedType", generatorListsAnyAnimated);
+        return new GeckoLibStatus(pluginLoaded, apiEnabled, generatorSupportsApi, availability.typesAvailable(),
+                availability.registeredElementTypes(), problems, debug, availability.registeredElementTypes(),
+                availability.creatableElementTypes(), availability.elementTypeAliases(),
+                availability.anyTypeCreatable(), availability.allTypesCreatable());
     }
 
     public GeckoLibAssets listAssets(AssetRoots roots) {
         List<String> warnings = new ArrayList<>();
         List<String> invalidJsonFiles = new ArrayList<>();
 
-        List<String> geoModels = scanJsonAssets(roots.modelsDir(), ".geo.json", invalidJsonFiles, warnings);
-        List<String> animations = scanJsonAssets(roots.animationsDir(), ".animation.json", invalidJsonFiles, warnings);
+        List<String> geoModels = mergeUniquePaths(
+                scanJsonAssets(roots.modelsDir(), ".geo.json", invalidJsonFiles, warnings),
+                scanJsonAssets(roots.runtimeGeoDir(), ".geo.json", invalidJsonFiles, warnings));
+        List<String> animations = mergeUniquePaths(
+                scanJsonAssets(roots.animationsDir(), ".animation.json", invalidJsonFiles, warnings),
+                scanJsonAssets(roots.runtimeAnimationsDir(), ".animation.json", invalidJsonFiles, warnings));
         List<String> textures = roots.textureDirs().values().stream()
                 .flatMap(path -> scanFiles(path, TEXTURE_EXTENSIONS, warnings).stream())
+                .map(this::normalizePathKey)
+                .distinct()
                 .sorted()
                 .toList();
 
         return new GeckoLibAssets(roots.workspaceModId(), roots.workspaceDir().toString(), geoModels, animations,
-                textures, invalidJsonFiles, List.of(), warnings);
+                textures, invalidJsonFiles.stream().map(this::normalizePathKey).distinct().sorted().toList(),
+                List.of(), warnings);
     }
 
     public AssetImportResult importAssets(AssetRoots roots, AssetImportRequest request) {
@@ -113,7 +157,7 @@ public final class GeckoLibSupportService {
         }
 
         List<PreparedAsset> preparedAssets = request.assets().stream()
-                .map(entry -> prepareImport(roots, entry, request.overwrite()))
+                .flatMap(entry -> prepareImport(roots, entry, request.overwrite()).stream())
                 .toList();
 
         List<Map<String, String>> skipped = preparedAssets.stream()
@@ -132,19 +176,32 @@ public final class GeckoLibSupportService {
         try {
             Files.createDirectories(stagingDir);
             for (PreparedAsset asset : assetsToCopy) {
-                Files.createDirectories(stagingDir.resolve(asset.relativeTarget()).getParent());
-                Files.copy(asset.source(), stagingDir.resolve(asset.relativeTarget()), StandardCopyOption.COPY_ATTRIBUTES);
-                validateStagedFile(asset, stagingDir.resolve(asset.relativeTarget()));
+                Path staged = stagingDir.resolve(asset.relativeTarget());
+                Files.createDirectories(staged.getParent());
+                Files.copy(asset.source(), staged, StandardCopyOption.COPY_ATTRIBUTES);
+                validateStagedFile(asset, staged);
             }
 
             for (PreparedAsset asset : assetsToCopy) {
                 Path staged = stagingDir.resolve(asset.relativeTarget());
                 Files.createDirectories(asset.target().getParent());
-                Files.move(staged, asset.target(), StandardCopyOption.ATOMIC_MOVE);
+                try {
+                    Files.move(staged, asset.target(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(staged, asset.target(), StandardCopyOption.REPLACE_EXISTING);
+                }
             }
 
             List<Map<String, String>> imported = assetsToCopy.stream()
-                    .map(asset -> Map.of("kind", asset.kind(), "targetPath", asset.target().toString()))
+                    .map(asset -> {
+                        Map<String, String> row = new LinkedHashMap<>();
+                        row.put("kind", asset.kind());
+                        row.put("targetPath", asset.target().toString());
+                        if (asset.location() != null && !asset.location().isBlank()) {
+                            row.put("location", asset.location());
+                        }
+                        return row;
+                    })
                     .toList();
             return new AssetImportResult(imported, skipped, List.of());
         } catch (IOException | RuntimeException e) {
@@ -201,7 +258,7 @@ public final class GeckoLibSupportService {
         if (elementType == null || elementType.isBlank()) {
             throw new IllegalArgumentException("Element type is required");
         }
-        String normalizedElementType = elementType.toLowerCase(Locale.ENGLISH);
+        String normalizedElementType = normalizeElementType(elementType);
         if (!ANIMATED_ELEMENT_TYPES.contains(normalizedElementType)) {
             throw new IllegalArgumentException("Unsupported GeckoLib element type: " + normalizedElementType);
         }
@@ -222,15 +279,16 @@ public final class GeckoLibSupportService {
         if (!status.pluginLoaded()) {
             throw new IllegalStateException("GeckoLib Plugin is not loaded.");
         }
-        if (!status.typesAvailable()) {
-            throw new IllegalStateException("GeckoLib animated element types are not available.");
-        }
         if (!status.generatorSupportsApi()) {
             throw new IllegalStateException("The current generator does not support the GeckoLib API.");
         }
         if (!status.apiEnabled()) {
             throw new IllegalStateException(
                     "GeckoLib API is not enabled in this workspace. Enable it in Workspace Settings > Required APIs, then retry.");
+        }
+        if (!isElementTypeCreatable(status.creatableElementTypes(), normalizedElementType)) {
+            throw new IllegalStateException("GeckoLib element type is not creatable in the current workspace: "
+                    + normalizedElementType);
         }
 
         if (workspace.getModElementByName(elementName.trim()) != null) {
@@ -249,10 +307,36 @@ public final class GeckoLibSupportService {
             workspace.markDirty();
             refreshWorkspaceUi(mcreator);
         });
+        String saveWarning = null;
+        try {
+            workspace.getFileManager().saveWorkspaceDirectlyAndWait();
+        } catch (Exception e) {
+            saveWarning = "Workspace force-save failed; persistence postconditions may be unknown: " + e.getMessage();
+        }
 
-        String message = "Created GeckoLib element '" + elementName.trim()
-                + "'. It may still need to be opened in the MCreator editor to configure plugin-specific fields and asset references.";
-        return new CreateElementResult(message, storage.appliedDefaults(), storage.warnings());
+        String recognizedInMemory = inspectInMemoryElement(workspace, elementName.trim(), normalizedElementType);
+        String definitionStored = inspectDefinitionStored(workspace, elementName.trim());
+        String definitionLoadable = inspectDefinitionLoadable(workspace, elementName.trim());
+        String workspaceEntryStored = inspectWorkspaceEntryStored(workspace, elementName.trim(), normalizedElementType);
+        CreationConfirmation confirmation = evaluateCreationConfirmation(recognizedInMemory,
+                definitionStored, definitionLoadable, workspaceEntryStored);
+
+        String message = confirmation.confirmed()
+                ? "Created and confirmed GeckoLib element '" + elementName.trim()
+                        + "'. It may still need to be opened in the MCreator editor to configure plugin-specific fields and asset references."
+                : "Created GeckoLib element '" + elementName.trim()
+                        + "', but persistence and recognition are not fully confirmed.";
+        List<String> warnings = new ArrayList<>(storage.warnings());
+        if (saveWarning != null) {
+            warnings.add(saveWarning);
+        }
+        warnings.addAll(confirmation.warnings());
+        if (!confirmation.confirmed()) {
+            warnings.add("Do not regenerate code until the failed or unknown creation postconditions are reconciled.");
+        }
+        return new CreateElementResult(message, storage.appliedDefaults(), storage.warnings(), confirmation.confirmed(),
+                elementName.trim(), normalizedElementType, modElement.getRegistryName(), recognizedInMemory,
+                definitionStored, definitionLoadable, workspaceEntryStored, confirmation.problems(), warnings);
     }
 
     public AssetRoots assetRootsForWorkspace(Workspace workspace) {
@@ -267,8 +351,13 @@ public final class GeckoLibSupportService {
             } catch (Exception ignored) {
             }
         }
-        return new AssetRoots(workspace.getWorkspaceSettings().getModID(), folderManager.getWorkspaceFolder().toPath(),
-                folderManager.getModelsDir().toPath(), folderManager.getModelAnimationsDir().toPath(), textureDirs);
+        String modId = workspace.getWorkspaceSettings().getModID();
+        Path workspaceDir = folderManager.getWorkspaceFolder().toPath();
+        Path runtimeAssets = workspaceDir.resolve("src").resolve("main").resolve("resources")
+                .resolve("assets").resolve(modId);
+        return new AssetRoots(modId, workspaceDir,
+                folderManager.getModelsDir().toPath(), folderManager.getModelAnimationsDir().toPath(),
+                runtimeAssets.resolve("geo"), runtimeAssets.resolve("animations"), textureDirs);
     }
 
     private Plugin findGeckoLibPlugin() {
@@ -285,15 +374,136 @@ public final class GeckoLibSupportService {
         }
     }
 
-    private List<String> findAvailableAnimatedElementTypes() {
+    private Set<String> findRegisteredElementTypes() {
         try {
             return ModElementTypeLoader.getAllModElementTypes().stream()
                     .map(ModElementType::getRegistryName)
-                    .filter(ANIMATED_ELEMENT_TYPES::contains)
+                    .collect(Collectors.toSet());
+        } catch (Exception e) {
+            return Set.of();
+        }
+    }
+
+    static TypeAvailability evaluateTypeAvailability(Set<String> registeredTypes, Set<String> generatorSupportedTypes,
+            boolean pluginLoaded, boolean apiEnabled, boolean generatorSupportsApi) {
+        Set<String> canonicalRegistered = canonicalRegistrationsFrom(registeredTypes);
+        Set<String> canonicalGeneratorSupported = canonicalRegistrationsFrom(generatorSupportedTypes);
+        List<String> registered = ANIMATED_ELEMENT_TYPES.stream().filter(canonicalRegistered::contains).sorted().toList();
+        boolean workspaceReady = pluginLoaded && apiEnabled && generatorSupportsApi;
+        boolean generatorListsAnyAnimated = ANIMATED_ELEMENT_TYPES.stream()
+                .anyMatch(canonicalGeneratorSupported::contains);
+        List<String> creatable;
+        if (!workspaceReady) {
+            creatable = List.of();
+        } else if (generatorListsAnyAnimated) {
+            creatable = ANIMATED_ELEMENT_TYPES.stream()
+                    .filter(canonicalRegistered::contains)
+                    .filter(canonicalGeneratorSupported::contains)
                     .sorted()
                     .toList();
+        } else {
+            // Generator stats sometimes omit plugin-provided types even when they are creatable in UI.
+            creatable = registered;
+        }
+        // typesAvailable = all four canonical types are registered (legacy full-plugin signal)
+        return new TypeAvailability(registered.containsAll(ANIMATED_ELEMENT_TYPES), !creatable.isEmpty(),
+                creatable.containsAll(ANIMATED_ELEMENT_TYPES), registered, creatable, ELEMENT_TYPE_ALIASES);
+    }
+
+    static boolean isElementTypeCreatable(Collection<String> creatableElementTypes, String elementType) {
+        return creatableElementTypes != null && creatableElementTypes.contains(normalizeElementType(elementType));
+    }
+
+    static CreationConfirmation evaluateCreationConfirmation(String recognizedInMemory, String definitionStored,
+            String definitionLoadable, String workspaceEntryStored) {
+        Map<String, String> checks = new LinkedHashMap<>();
+        checks.put("recognizedInMemory", normalizeCheckStatus(recognizedInMemory));
+        checks.put("definitionStored", normalizeCheckStatus(definitionStored));
+        checks.put("definitionLoadable", normalizeCheckStatus(definitionLoadable));
+        checks.put("workspaceEntryStored", normalizeCheckStatus(workspaceEntryStored));
+
+        List<String> problems = checks.entrySet().stream()
+                .filter(entry -> "fail".equals(entry.getValue()))
+                .map(entry -> "Creation postcondition failed: " + entry.getKey())
+                .toList();
+        List<String> warnings = checks.entrySet().stream()
+                .filter(entry -> "unknown".equals(entry.getValue()))
+                .map(entry -> "Creation postcondition is unknown: " + entry.getKey())
+                .toList();
+        boolean confirmed = checks.values().stream().allMatch("pass"::equals);
+        return new CreationConfirmation(confirmed, problems, warnings);
+    }
+
+    private static Set<String> canonicalRegistrationsFrom(Collection<String> types) {
+        if (types == null) {
+            return Set.of();
+        }
+        return types.stream().filter(Objects::nonNull).map(type -> type.trim().toLowerCase(Locale.ENGLISH))
+                .filter(ANIMATED_ELEMENT_TYPES::contains).collect(Collectors.toSet());
+    }
+
+    static String normalizeElementType(String elementType) {
+        String normalized = elementType == null ? "" : elementType.trim().toLowerCase(Locale.ENGLISH);
+        return ELEMENT_TYPE_ALIASES.getOrDefault(normalized, normalized);
+    }
+
+    private static String normalizeCheckStatus(String status) {
+        return Set.of("pass", "fail", "unknown").contains(status) ? status : "unknown";
+    }
+
+    private String inspectInMemoryElement(Workspace workspace, String elementName, String elementType) {
+        try {
+            ModElement element = workspace.getModElementByName(elementName);
+            return element != null && elementType.equals(element.getType().getRegistryName()) ? "pass" : "fail";
         } catch (Exception e) {
-            return List.of();
+            return "unknown";
+        }
+    }
+
+    private String inspectDefinitionStored(Workspace workspace, String elementName) {
+        try {
+            Path definition = workspace.getFolderManager().getModElementsDir().toPath()
+                    .resolve(elementName + ".mod.json");
+            return Files.isRegularFile(definition) ? "pass" : "fail";
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    private String inspectDefinitionLoadable(Workspace workspace, String elementName) {
+        try {
+            Path definition = workspace.getFolderManager().getModElementsDir().toPath()
+                    .resolve(elementName + ".mod.json");
+            ModElement element = workspace.getModElementByName(elementName);
+            if (element == null) {
+                return "fail";
+            }
+            String json = Files.readString(definition);
+            return workspace.getModElementManager().fromJSONtoGeneratableElement(json, element) != null
+                    ? "pass"
+                    : "fail";
+        } catch (Exception e) {
+            return Files.exists(workspace.getFolderManager().getModElementsDir().toPath()
+                    .resolve(elementName + ".mod.json")) ? "fail" : "unknown";
+        }
+    }
+
+    private String inspectWorkspaceEntryStored(Workspace workspace, String elementName, String elementType) {
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(workspace.getFileManager().getWorkspaceFile());
+            JsonNode elements = root.get("mod_elements");
+            if (elements == null || !elements.isArray()) {
+                return "unknown";
+            }
+            for (JsonNode element : elements) {
+                if (elementName.equals(element.path("name").asText())
+                        && elementType.equals(element.path("type").asText())) {
+                    return "pass";
+                }
+            }
+            return "fail";
+        } catch (Exception e) {
+            return "unknown";
         }
     }
 
@@ -337,7 +547,7 @@ public final class GeckoLibSupportService {
         }
     }
 
-    private PreparedAsset prepareImport(AssetRoots roots, AssetImportEntry entry, boolean overwrite) {
+    private List<PreparedAsset> prepareImport(AssetRoots roots, AssetImportEntry entry, boolean overwrite) {
         if (entry.sourcePath() == null || entry.sourcePath().isBlank()) {
             throw new IllegalArgumentException("Asset sourcePath is required");
         }
@@ -350,36 +560,76 @@ public final class GeckoLibSupportService {
         if ("geo".equals(kind)) {
             kind = "geo_model";
         }
-        String fileName = entry.targetName() != null && !entry.targetName().isBlank() ? entry.targetName() : source.getFileName().toString();
-        Path targetDir;
+        String fileName = entry.targetName() != null && !entry.targetName().isBlank()
+                ? entry.targetName()
+                : source.getFileName().toString();
+
+        List<TargetSpec> targets = new ArrayList<>();
         if ("geo_model".equals(kind)) {
             expectSuffix(fileName, ".geo.json", "Expected .geo.json for geo_model asset");
-            targetDir = roots.modelsDir();
+            targets.add(new TargetSpec(roots.modelsDir().resolve(fileName), "authoring"));
+            targets.add(new TargetSpec(roots.runtimeGeoDir().resolve(fileName), "runtime"));
         } else if ("animation".equals(kind)) {
             expectSuffix(fileName, ".animation.json", "Expected .animation.json for animation asset");
-            targetDir = roots.animationsDir();
+            targets.add(new TargetSpec(roots.animationsDir().resolve(fileName), "authoring"));
+            targets.add(new TargetSpec(roots.runtimeAnimationsDir().resolve(fileName), "runtime"));
         } else if ("texture".equals(kind)) {
             String lower = fileName.toLowerCase(Locale.ENGLISH);
             if (TEXTURE_EXTENSIONS.stream().noneMatch(lower::endsWith)) {
                 throw new IllegalArgumentException("Expected .png for texture asset: " + fileName);
             }
             String textureSubdir = normalizeTextureSubdir(entry.textureSubdir());
-            targetDir = roots.textureDirs().get(textureSubdir);
+            Path targetDir = roots.textureDirs().get(textureSubdir);
             if (targetDir == null) {
                 throw new IllegalArgumentException("Texture directory is not available for type: " + textureSubdir);
             }
+            targets.add(new TargetSpec(targetDir.resolve(fileName), "texture"));
         } else {
             throw new IllegalArgumentException("Unsupported GeckoLib asset kind: " + kind);
         }
 
-        Path target = targetDir.resolve(fileName);
-        boolean existedBefore = Files.exists(target);
-        if (existedBefore && !overwrite) {
-            return new PreparedAsset(kind, source, target, roots.workspaceDir().relativize(target), true,
-                    "Target already exists and overwrite=false", existedBefore);
+        List<PreparedAsset> prepared = new ArrayList<>();
+        for (TargetSpec targetSpec : targets) {
+            Path target = targetSpec.path();
+            Path relative = relativizeSafe(roots.workspaceDir(), target);
+            boolean existedBefore = Files.exists(target);
+            if (existedBefore && !overwrite) {
+                prepared.add(new PreparedAsset(kind, source, target, relative, true,
+                        "Target already exists and overwrite=false", existedBefore, targetSpec.location()));
+            } else {
+                prepared.add(new PreparedAsset(kind, source, target, relative, false, "", existedBefore,
+                        targetSpec.location()));
+            }
         }
-        return new PreparedAsset(kind, source, target, roots.workspaceDir().relativize(target), false, "",
-                existedBefore);
+        return prepared;
+    }
+
+    private Path relativizeSafe(Path workspaceDir, Path target) {
+        try {
+            return workspaceDir.relativize(target);
+        } catch (IllegalArgumentException e) {
+            // Different roots (rare on Windows); fall back to a unique staging key.
+            return Path.of("external").resolve(Integer.toHexString(target.toString().hashCode()))
+                    .resolve(target.getFileName());
+        }
+    }
+
+    private List<String> mergeUniquePaths(List<String> first, List<String> second) {
+        LinkedHashSet<String> merged = new LinkedHashSet<>();
+        if (first != null) {
+            first.stream().map(this::normalizePathKey).forEach(merged::add);
+        }
+        if (second != null) {
+            second.stream().map(this::normalizePathKey).forEach(merged::add);
+        }
+        return merged.stream().sorted().toList();
+    }
+
+    private String normalizePathKey(String path) {
+        if (path == null) {
+            return "";
+        }
+        return Path.of(path).normalize().toString().replace('\\', '/');
     }
 
     private void expectSuffix(String fileName, String suffix, String message) {
@@ -411,16 +661,26 @@ public final class GeckoLibSupportService {
         List<String> warnings = new ArrayList<>();
         AssetRoots roots = assetRootsForWorkspace(workspace);
         checkStringField(element, "normal")
-                .ifPresent(model -> checkExists(warnings, roots.modelsDir().resolve(model),
-                        "Missing referenced geo model: " + model));
+                .ifPresent(model -> checkGeoExists(warnings, roots, model));
         checkStringField(element, "model")
-                .ifPresent(model -> checkExists(warnings, roots.modelsDir().resolve(model),
-                        "Missing referenced geo model: " + model));
+                .ifPresent(model -> checkGeoExists(warnings, roots, model));
         checkStringField(element, "texture")
                 .ifPresent(texture -> checkTextureExists(warnings, roots, "item", texture));
         checkStringField(element, "mobModelTexture")
                 .ifPresent(texture -> checkTextureExists(warnings, roots, "entity", texture));
         return warnings;
+    }
+
+    private void checkGeoExists(List<String> warnings, AssetRoots roots, String model) {
+        if (model == null || model.isBlank()) {
+            return;
+        }
+        Path authoring = roots.modelsDir().resolve(model);
+        Path runtime = roots.runtimeGeoDir().resolve(model);
+        if (!Files.exists(authoring) && !Files.exists(runtime)) {
+            warnings.add("Missing referenced geo model: " + model
+                    + " (checked models/ and assets/" + roots.workspaceModId() + "/geo/)");
+        }
     }
 
     private Optional<String> checkStringField(Object object, String fieldName) {
@@ -691,11 +951,27 @@ public final class GeckoLibSupportService {
 
     public record GeckoLibStatus(boolean pluginLoaded, boolean apiEnabled, boolean generatorSupportsApi,
                                  boolean typesAvailable, List<String> availableElementTypes, List<String> problems,
-                                 Map<String, Object> debug) {
+                                 Map<String, Object> debug, List<String> registeredElementTypes,
+                                 List<String> creatableElementTypes, Map<String, String> elementTypeAliases,
+                                 boolean anyTypeCreatable, boolean allTypesCreatable) {
+    }
+
+    public record TypeAvailability(boolean typesAvailable, boolean anyTypeCreatable, boolean allTypesCreatable,
+                                   List<String> registeredElementTypes, List<String> creatableElementTypes,
+                                   Map<String, String> elementTypeAliases) {
     }
 
     public record AssetRoots(String workspaceModId, Path workspaceDir, Path modelsDir, Path animationsDir,
-                             Map<String, Path> textureDirs) {
+                             Path runtimeGeoDir, Path runtimeAnimationsDir, Map<String, Path> textureDirs) {
+        public AssetRoots(String workspaceModId, Path workspaceDir, Path modelsDir, Path animationsDir,
+                Map<String, Path> textureDirs) {
+            this(workspaceModId, workspaceDir, modelsDir, animationsDir,
+                    workspaceDir.resolve("src").resolve("main").resolve("resources").resolve("assets")
+                            .resolve(workspaceModId == null ? "modid" : workspaceModId).resolve("geo"),
+                    workspaceDir.resolve("src").resolve("main").resolve("resources").resolve("assets")
+                            .resolve(workspaceModId == null ? "modid" : workspaceModId).resolve("animations"),
+                    textureDirs);
+        }
     }
 
     public record GeckoLibAssets(String workspaceModId, String baseAssetsDir, List<String> geoModels,
@@ -720,13 +996,22 @@ public final class GeckoLibSupportService {
                                    List<String> warnings) {
     }
 
-    public record CreateElementResult(String message, List<String> appliedDefaults, List<String> validationWarnings) {
+    public record CreateElementResult(String message, List<String> appliedDefaults, List<String> validationWarnings,
+                                      boolean confirmed, String elementName, String elementType, String registryName,
+                                      String recognizedInMemory, String definitionStored, String definitionLoadable,
+                                      String workspaceEntryStored, List<String> problems, List<String> warnings) {
+    }
+
+    public record CreationConfirmation(boolean confirmed, List<String> problems, List<String> warnings) {
     }
 
     private record InstantiatedStorage(GeneratableElement definition, List<String> appliedDefaults, List<String> warnings) {
     }
 
+    private record TargetSpec(Path path, String location) {
+    }
+
     private record PreparedAsset(String kind, Path source, Path target, Path relativeTarget, boolean skip,
-                                 String skipReason, boolean existedBefore) {
+                                 String skipReason, boolean existedBefore, String location) {
     }
 }

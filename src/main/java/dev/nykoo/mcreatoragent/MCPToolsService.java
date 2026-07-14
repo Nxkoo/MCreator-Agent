@@ -417,7 +417,7 @@ public class MCPToolsService {
 
     private McpTypes.ToolResult createGeckoLibElement(MCreator mcreator, Map<String, Object> params) {
         try {
-            return createJsonResult(geckoLibSupportService.createElement(mcreator, params));
+            return createGeckoLibCreationResult(geckoLibSupportService.createElement(mcreator, params));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return createErrorResult(e.getMessage());
         } catch (Exception e) {
@@ -640,12 +640,23 @@ public class MCPToolsService {
     }
 
     private McpTypes.ToolResult createJsonResult(Object value) throws IOException {
-        return createSuccessResult(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(value));
+        return createJsonResult(value, false);
+    }
+
+    private McpTypes.ToolResult createJsonResult(Object value, boolean isError) throws IOException {
+        List<McpTypes.ToolContent> content = List.of(
+                new McpTypes.ToolContent("text", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(value)));
+        return new McpTypes.ToolResult(content, isError);
+    }
+
+    McpTypes.ToolResult createGeckoLibCreationResult(GeckoLibSupportService.CreateElementResult result)
+            throws IOException {
+        return createJsonResult(result, !result.confirmed());
     }
 
     static boolean isGeckoLibAnimatedElementType(String elementType) {
-        return elementType != null
-                && GeckoLibSupportService.ANIMATED_ELEMENT_TYPES.contains(elementType.trim().toLowerCase(Locale.ENGLISH));
+        return elementType != null && GeckoLibSupportService.ANIMATED_ELEMENT_TYPES.contains(
+                GeckoLibSupportService.normalizeElementType(elementType));
     }
 
     /**

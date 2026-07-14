@@ -22,7 +22,7 @@ public class MCreatorAgent extends JavaPlugin {
 
     private static final Logger LOG = LogManager.getLogger("MCreatorAgent");
     private static final int DEFAULT_HTTP_PORT = 5175;
-    private static final String SERVER_VERSION = "1.0.0-2024.4";
+    private static final String SERVER_VERSION = "1.0.1-2024.4";
     
     private McpServer mcpServer;
     private McpHttpTransport httpTransport;
