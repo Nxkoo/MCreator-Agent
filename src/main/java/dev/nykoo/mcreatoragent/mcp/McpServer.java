@@ -252,6 +252,17 @@ public class McpServer {
                        "protectGradle", Map.of("type", "boolean", "description", "Restore protected gradle files if rewritten (default true)")
                    ),
                    "required", List.of("elementName"))));
+
+        tools.add(createTool("importBlockbenchItemModel",
+            "Import a Blockbench item JSON (+ optional PNG) into models/custom and models/item with rewritten modid:item texture refs",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "sourceModelPath", Map.of("type", "string", "description", "Absolute path to Blockbench .json model"),
+                       "sourceTexturePath", Map.of("type", "string", "description", "Optional absolute path to .png texture"),
+                       "targetName", Map.of("type", "string", "description", "Registry-style name without extension (default: model file stem)"),
+                       "overwrite", Map.of("type", "boolean", "description", "Replace existing models/textures (default true)")
+                   ),
+                   "required", List.of("sourceModelPath"))));
         
         // Testing tools
         tools.add(createTool("runClient", "Start Minecraft client",
@@ -275,13 +286,13 @@ public class McpServer {
                    "required", List.of("assets"))));
 
         tools.add(createTool("createGeckoLibElement",
-            "Create a GeckoLib animated element. Pass a complete definition; optional generateCode=true generates Java after create.",
+            "Create a GeckoLib animated element with a complete definition. generateCode defaults to true (Java/registries).",
             Map.of("type", "object",
                    "properties", Map.of(
                        "elementType", Map.of("type", "string", "description", "Canonical type animatedentity, animateditem, animatedblock, or animatedarmor. Legacy gecko* aliases are accepted as input only."),
                        "elementName", Map.of("type", "string", "description", "Name of the new element"),
                        "definition", Map.of("type", "object", "description", "Optional fields to initialize (primitives, colors {value}, sounds, etc.)"),
-                       "generateCode", Map.of("type", "boolean", "description", "If true, generate the element after create when confirmed"),
+                       "generateCode", Map.of("type", "boolean", "description", "Generate Java after create (default true). Set false for scaffold-only."),
                        "strict", Map.of("type", "boolean", "description", "If true, unsupported definition fields fail instead of skip")
                    ),
                    "required", List.of("elementType", "elementName"))));

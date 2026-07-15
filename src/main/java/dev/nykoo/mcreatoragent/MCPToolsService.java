@@ -30,6 +30,7 @@ public class MCPToolsService {
     private static final Logger LOG = LogManager.getLogger("MCP-Tools");
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final GeckoLibSupportService geckoLibSupportService = new GeckoLibSupportService();
+    private final BlockbenchItemModelService blockbenchItemModelService = new BlockbenchItemModelService();
 
     /**
      * Register all MCreator tools with the MCP server
@@ -48,6 +49,7 @@ public class MCPToolsService {
         mcpServer.registerHandler("deleteElement", params -> deleteElement(mcreator, params));
         mcpServer.registerHandler("setModElementLock", params -> setModElementLock(mcreator, params));
         mcpServer.registerHandler("generateModElement", params -> generateModElement(mcreator, params));
+        mcpServer.registerHandler("importBlockbenchItemModel", params -> importBlockbenchItemModel(mcreator, params));
 
         // Testing tools
         mcpServer.registerHandler("runClient", params -> executeRunClient(mcreator));
@@ -500,6 +502,19 @@ public class MCPToolsService {
         } catch (Exception e) {
             LOG.error("Error generating mod element", e);
             return createErrorResult("Failed to generate mod element: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult importBlockbenchItemModel(MCreator mcreator, Map<String, Object> params) {
+        try {
+            BlockbenchItemModelService.ImportResult result = blockbenchItemModelService.importItemModel(mcreator, params);
+            SwingUtilities.invokeLater(() -> refreshWorkspaceUi(mcreator));
+            return createJsonResult(result);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return createErrorResult(e.getMessage());
+        } catch (Exception e) {
+            LOG.error("Error importing Blockbench item model", e);
+            return createErrorResult("Failed to import Blockbench item model: " + e.getMessage());
         }
     }
 

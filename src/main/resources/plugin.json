@@ -7,8 +7,8 @@
   "javaplugin": "dev.nykoo.mcreatoragent.MCreatorAgent",
   "info": {
     "name": "MCreator Agent",
-    "version": "1.0.1-2024.4",
-    "description": "Model Context Protocol (MCP) server integration ported for MCreator 2024.4. Provides local tools to inspect workspaces, manage elements, build projects, run client/server actions, and work defensively with GeckoLib assets.",
+    "version": "1.0.2-2024.4",
+    "description": "Model Context Protocol (MCP) server for MCreator 2024.4: workspace tools, GeckoLib create/generate/update/validate, Blockbench item model import, and guarded regenerate/build.",
     "author": "Nykoo",
     "website": "https://github.com/nxkoo/MCreator-Agent/",
     "tags": ["mcp", "llm", "ai", "integration", "tools"],

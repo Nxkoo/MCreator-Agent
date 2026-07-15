@@ -121,6 +121,13 @@ const INDEX: Entry[] = [
   },
   {
     group: "Tools",
+    title: "importBlockbenchItemModel",
+    hint: "WRITE · item model + texture rewrite",
+    to: "/docs/tools",
+    boost: 4,
+  },
+  {
+    group: "Tools",
     title: "regenerateCode",
     hint: "ACTION · full workspace regen (risky)",
     to: "/docs/tools",

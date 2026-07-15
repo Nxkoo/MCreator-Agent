@@ -77,12 +77,16 @@ function Gecko() {
         </li>
         <li>
           <strong>Create element</strong>: Use <code>createGeckoLibElement</code> with a complete{" "}
-          <code>definition</code> (hitbox, model, texture, animations, optional{" "}
-          <code>headMovement</code>). Optionally pass <code>generateCode: true</code>.
+          <code>definition</code>. <code>generateCode</code> defaults to <strong>true</strong> (Java +
+          registries). Pass <code>false</code> only for scaffold-only.
         </li>
         <li>
-          <strong>Generate code</strong>: If create did not generate Java, call{" "}
-          <code>generateModElement</code> (preferred over full <code>regenerateCode</code>).
+          <strong>Generate code</strong>: If needed separately, call <code>generateModElement</code>{" "}
+          (preferred over full <code>regenerateCode</code>).
+        </li>
+        <li>
+          <strong>Normal item models</strong>: Use <code>importBlockbenchItemModel</code> for
+          non-GeckoLib Blockbench items (texture namespace rewrite included).
         </li>
         <li>
           <strong>Update if needed</strong>: Use <code>updateGeckoLibElement</code> instead of

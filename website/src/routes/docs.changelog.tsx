@@ -41,8 +41,37 @@ type Release = {
 
 const RELEASES: Release[] = [
   {
+    version: "1.0.2-2024.4 · base complete",
+    date: "Preview",
+    status: "preview",
+    summary:
+      "MCP MCreator base path: generateCode defaults on, generate parity with UI save, Blockbench item model import, stricter validate codes, and installable plugin zip.",
+    entries: [
+      {
+        tag: "added",
+        text: "importBlockbenchItemModel — custom/item models with rewritten modid:item texture refs.",
+      },
+      {
+        tag: "changed",
+        text: "createGeckoLibElement generateCode defaults to true; post-generate validate nested into result.",
+      },
+      {
+        tag: "changed",
+        text: "generateModElement runs storeModElementPicture/reinit and returns metadataFiles, baseGenerated, gradleRestored.",
+      },
+      {
+        tag: "changed",
+        text: "validateGeckoLibElement uses MISSING_GEO / MISSING_TEXTURE / MISSING_JAVA_OR_RESOURCE problem codes.",
+      },
+      {
+        tag: "note",
+        text: "Custom gameplay (EnderAPI, packets, abilities) stays agent code — not MCP.",
+      },
+    ],
+  },
+  {
     version: "1.0.1-2024.4 · hardening",
-    date: "In development / next preview",
+    date: "Previous",
     status: "preview",
     summary:
       "Hardens the GeckoLib create → generate path after real commission-mod failures: safer definitions, single-element generate, gradle protection, and agent skill truth tables.",

@@ -243,14 +243,18 @@ public final class GeckoLibSupportService {
                     List.of("Element '" + element.getName() + "' is not a GeckoLib animated element."), List.of());
         }
 
-        List<String> problems = new ArrayList<>(getStatus(workspace).problems());
+        List<String> problems = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        // Plugin/API status issues are warnings unless the element type itself cannot load.
+        warnings.addAll(getStatus(workspace).problems());
         GeneratableElement generatableElement = element.getGeneratableElement();
         if (generatableElement == null) {
             problems.add("Element definition could not be loaded.");
         } else {
             problems.addAll(validateKnownAssetReferences(workspace, generatableElement));
-            warnings.addAll(validateGeneratedCompanions(workspace, element));
+            CompanionCheck companions = validateGeneratedCompanions(workspace, element);
+            problems.addAll(companions.problems());
+            warnings.addAll(companions.warnings());
             if (Boolean.TRUE.equals(readBooleanField(generatableElement, "headMovement"))) {
                 warnings.add("headMovement=true: verify generated/locked model rotates the correct bone name(s); "
                         + "sibling bones of head (nose/headwear) may not follow automatically.");
@@ -340,14 +344,23 @@ public final class GeckoLibSupportService {
             warnings.add("Do not regenerate code until the failed or unknown creation postconditions are reconciled.");
         }
 
-        boolean generateCode = booleanParam(params, "generateCode", false);
+        // Default generateCode=true for animated types so MCP creates a usable MCreator base without a second call.
+        boolean generateCode = params == null || !params.containsKey("generateCode")
+                || booleanParam(params, "generateCode", true);
+        List<String> problems = new ArrayList<>(confirmation.problems());
         if (generateCode && confirmation.confirmed()) {
             GenerateElementResult generateResult = generateModElement(mcreator, elementName.trim(), true, true);
             generatedFiles = generateResult.generatedFiles();
             warnings.addAll(generateResult.warnings());
             if (!"completed".equals(generateResult.status())) {
-                warnings.add("createGeckoLibElement generateCode did not complete: " + generateResult.message());
+                problems.add("createGeckoLibElement generateCode did not complete: " + generateResult.message());
+            } else {
+                ValidationResult post = validateElement(workspace, elementName.trim());
+                problems.addAll(post.problems());
+                warnings.addAll(post.warnings());
             }
+        } else if (!generateCode) {
+            warnings.add("generateCode=false: element scaffold only. Call generateModElement for Java/registries.");
         } else if (generateCode) {
             warnings.add("generateCode was requested but skipped because creation postconditions are not confirmed.");
         }
@@ -360,9 +373,10 @@ public final class GeckoLibSupportService {
                 : "Created GeckoLib element '" + elementName.trim()
                         + "', but persistence and recognition are not fully confirmed.";
         return new CreateElementResult(message, storage.appliedDefaults(), storage.validationWarnings(),
-                confirmation.confirmed(), elementName.trim(), normalizedElementType, modElement.getRegistryName(),
-                recognizedInMemory, definitionStored, definitionLoadable, workspaceEntryStored,
-                confirmation.problems(), warnings, storage.appliedFields(), storage.skippedFields(), generatedFiles);
+                confirmation.confirmed() && problems.isEmpty(), elementName.trim(), normalizedElementType,
+                modElement.getRegistryName(), recognizedInMemory, definitionStored, definitionLoadable,
+                workspaceEntryStored, problems, warnings, storage.appliedFields(), storage.skippedFields(),
+                generatedFiles);
     }
 
     public CreateElementResult updateElement(MCreator mcreator, Map<String, Object> params) {
@@ -445,7 +459,8 @@ public final class GeckoLibSupportService {
         }
         if (modElement.isCodeLocked()) {
             return new GenerateElementResult("skipped_locked", elementName.trim(), List.of(), List.of(), List.of(),
-                    List.of("Element code is locked; generation skipped."), "Element is code-locked.");
+                    List.of(), List.of("Element code is locked; generation skipped."), "Element is code-locked.",
+                    false, false);
         }
         if (workspace.getGenerator() == null) {
             throw new IllegalStateException("Workspace generator is not available");
@@ -462,6 +477,7 @@ public final class GeckoLibSupportService {
         }
 
         List<String> generatedFiles = new ArrayList<>();
+        boolean baseGenerated = false;
         try {
             List<GeneratorFile> files = workspace.getGenerator().generateElement(definition, true);
             for (GeneratorFile file : files) {
@@ -472,6 +488,27 @@ public final class GeckoLibSupportService {
             }
             if (generateBase) {
                 workspace.getGenerator().generateBase(true);
+                baseGenerated = true;
+            }
+            // Match MCreator UI save/regenerate side-effects for a single mod element.
+            try {
+                workspace.getModElementManager().storeModElementPicture(definition);
+            } catch (Exception e) {
+                warnings.add("storeModElementPicture failed: " + e.getMessage());
+            }
+            try {
+                definition.getModElement().reinit(workspace);
+            } catch (Exception e) {
+                warnings.add("modElement.reinit failed: " + e.getMessage());
+            }
+            try {
+                definition.getModElement().getMCItems().forEach(mcItem -> {
+                    try {
+                        mcItem.icon.getImage().flush();
+                    } catch (Exception ignored) {
+                    }
+                });
+            } catch (Exception ignored) {
             }
             workspace.getModElementManager().storeModElement(definition);
             try {
@@ -482,12 +519,13 @@ public final class GeckoLibSupportService {
             runQuickEdtMutation(() -> refreshWorkspaceUi(mcreator));
         } catch (Exception e) {
             return new GenerateElementResult("failed", elementName.trim(), generatedFiles, List.of(), List.of(),
-                    warnings, "Generation failed: " + e.getMessage());
+                    List.of(), warnings, "Generation failed: " + e.getMessage(), baseGenerated, false);
         }
 
         List<String> restored = List.of();
         List<String> deleted = List.of();
         List<String> modified = List.of();
+        boolean gradleRestored = false;
         if (snapshot != null) {
             try {
                 WorkspaceMutationGuard.MutationReport report = WorkspaceMutationGuard.diffAndProtect(workspaceDir,
@@ -496,13 +534,38 @@ public final class GeckoLibSupportService {
                 deleted = report.deletedFiles();
                 modified = report.modifiedFiles();
                 warnings.addAll(report.warnings());
+                gradleRestored = restored.stream().anyMatch(p -> p.replace('\\', '/').endsWith("mcreator.gradle")
+                        || p.replace('\\', '/').endsWith("build.gradle"));
+                if (gradleRestored) {
+                    warnings.add("gradleRestored=true: protected gradle file(s) were restored after generateBase.");
+                }
             } catch (Exception e) {
                 warnings.add("Post-generation mutation report failed: " + e.getMessage());
             }
         }
 
-        return new GenerateElementResult("completed", elementName.trim(), generatedFiles, deleted, modified, warnings,
-                "Generated mod element '" + elementName.trim() + "'.");
+        List<String> metadataFiles = readMetadataFiles(modElement);
+        if (generatedFiles.isEmpty() && !metadataFiles.isEmpty()) {
+            generatedFiles = new ArrayList<>(metadataFiles);
+        }
+
+        return new GenerateElementResult("completed", elementName.trim(), generatedFiles, deleted, modified,
+                metadataFiles, warnings, "Generated mod element '" + elementName.trim() + "'.", baseGenerated,
+                gradleRestored);
+    }
+
+    private List<String> readMetadataFiles(ModElement modElement) {
+        Object filesMeta = modElement.getMetadata("files");
+        if (!(filesMeta instanceof List<?> fileList) || fileList.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (Object entry : fileList) {
+            if (entry instanceof String relative && !relative.isBlank()) {
+                out.add(relative.replace('\\', '/'));
+            }
+        }
+        return out;
     }
 
     public AssetRoots assetRootsForWorkspace(Workspace workspace) {
@@ -824,35 +887,36 @@ public final class GeckoLibSupportService {
     }
 
     private List<String> validateKnownAssetReferences(Workspace workspace, GeneratableElement element) {
-        List<String> warnings = new ArrayList<>();
+        List<String> problems = new ArrayList<>();
         AssetRoots roots = assetRootsForWorkspace(workspace);
         checkStringField(element, "normal")
-                .ifPresent(model -> checkGeoExists(warnings, roots, model));
+                .ifPresent(model -> checkGeoExists(problems, roots, model));
         checkStringField(element, "model")
-                .ifPresent(model -> checkGeoExists(warnings, roots, model));
+                .ifPresent(model -> checkGeoExists(problems, roots, model));
         checkStringField(element, "texture")
-                .ifPresent(texture -> checkTextureExists(warnings, roots, "item", texture));
+                .ifPresent(texture -> checkTextureExists(problems, roots, "item", texture));
         checkStringField(element, "mobModelTexture")
-                .ifPresent(texture -> checkTextureExists(warnings, roots, "entity", texture));
+                .ifPresent(texture -> checkTextureExists(problems, roots, "entity", texture));
         // animation companion files use the geo basename when present
         checkStringField(element, "model").ifPresent(model -> {
             String base = model.endsWith(".geo.json") ? model.substring(0, model.length() - ".geo.json".length()) : model;
             Path authoring = roots.animationsDir().resolve(base + ".animation.json");
             Path runtime = roots.runtimeAnimationsDir().resolve(base + ".animation.json");
             if (!Files.exists(authoring) && !Files.exists(runtime)) {
-                warnings.add("Missing animation companion for model '" + model + "' (expected " + base
+                problems.add("MISSING_ANIMATION: companion for model '" + model + "' (expected " + base
                         + ".animation.json under models/animations or assets animations).");
             }
         });
-        return warnings;
+        return problems;
     }
 
-    private List<String> validateGeneratedCompanions(Workspace workspace, ModElement element) {
+    private CompanionCheck validateGeneratedCompanions(Workspace workspace, ModElement element) {
+        List<String> problems = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         Object filesMeta = element.getMetadata("files");
         if (!(filesMeta instanceof List<?> fileList) || fileList.isEmpty()) {
-            warnings.add("No generated metadata.files yet for this element; Java may not have been generated.");
-            return warnings;
+            warnings.add("NO_METADATA_FILES: no generated metadata.files yet; call generateModElement or create with generateCode=true.");
+            return new CompanionCheck(problems, warnings);
         }
         Path root = workspace.getWorkspaceFolder().toPath();
         for (Object entry : fileList) {
@@ -861,10 +925,13 @@ public final class GeckoLibSupportService {
             }
             Path path = root.resolve(relative.replace('/', java.io.File.separatorChar));
             if (!Files.isRegularFile(path)) {
-                warnings.add("metadata.files entry missing on disk: " + relative);
+                problems.add("MISSING_JAVA_OR_RESOURCE: metadata.files entry missing on disk: " + relative);
             }
         }
-        return warnings;
+        return new CompanionCheck(problems, warnings);
+    }
+
+    private record CompanionCheck(List<String> problems, List<String> warnings) {
     }
 
     private Boolean readBooleanField(Object target, String fieldName) {
@@ -891,14 +958,14 @@ public final class GeckoLibSupportService {
         return defaultValue;
     }
 
-    private void checkGeoExists(List<String> warnings, AssetRoots roots, String model) {
+    private void checkGeoExists(List<String> problems, AssetRoots roots, String model) {
         if (model == null || model.isBlank()) {
             return;
         }
         Path authoring = roots.modelsDir().resolve(model);
         Path runtime = roots.runtimeGeoDir().resolve(model);
         if (!Files.exists(authoring) && !Files.exists(runtime)) {
-            warnings.add("Missing referenced geo model: " + model
+            problems.add("MISSING_GEO: referenced geo model: " + model
                     + " (checked models/ and assets/" + roots.workspaceModId() + "/geo/)");
         }
     }
@@ -921,15 +988,15 @@ public final class GeckoLibSupportService {
         }
     }
 
-    private void checkTextureExists(List<String> warnings, AssetRoots roots, String textureType, String texture) {
+    private void checkTextureExists(List<String> problems, AssetRoots roots, String textureType, String texture) {
         Path textureDir = roots.textureDirs().get(textureType);
         if (textureDir == null) {
-            warnings.add("Could not resolve texture directory for type: " + textureType);
+            problems.add("MISSING_TEXTURE_DIR: could not resolve texture directory for type: " + textureType);
             return;
         }
         Path texturePath = textureDir.resolve(texture.endsWith(".png") ? texture : texture + ".png");
         if (!Files.exists(texturePath)) {
-            warnings.add("Missing referenced texture: " + texture);
+            problems.add("MISSING_TEXTURE: referenced texture: " + texture);
         }
     }
 
@@ -1473,8 +1540,16 @@ public final class GeckoLibSupportService {
     }
 
     public record GenerateElementResult(String status, String elementName, List<String> generatedFiles,
-                                        List<String> deletedFiles, List<String> modifiedFiles, List<String> warnings,
-                                        String message) {
+                                        List<String> deletedFiles, List<String> modifiedFiles,
+                                        List<String> metadataFiles, List<String> warnings, String message,
+                                        boolean baseGenerated, boolean gradleRestored) {
+        public GenerateElementResult {
+            generatedFiles = generatedFiles == null ? List.of() : List.copyOf(generatedFiles);
+            deletedFiles = deletedFiles == null ? List.of() : List.copyOf(deletedFiles);
+            modifiedFiles = modifiedFiles == null ? List.of() : List.copyOf(modifiedFiles);
+            metadataFiles = metadataFiles == null ? List.of() : List.copyOf(metadataFiles);
+            warnings = warnings == null ? List.of() : List.copyOf(warnings);
+        }
     }
 
     private record DefinitionApplyResult(List<String> appliedFields, List<String> skippedFields) {

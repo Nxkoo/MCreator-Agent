@@ -72,7 +72,16 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         args: `{ elementName: string, generateBase?: boolean, protectGradle?: boolean }`,
         example: `generateModElement({ elementName: "ZombieWarden", generateBase: true, protectGradle: true })`,
         notes:
-          "Preferred over full regenerateCode for new GeckoLib entities. Restores mcreator.gradle/build.gradle when rewritten if protectGradle is true (default).",
+          "Preferred over full regenerateCode for new GeckoLib entities. Restores mcreator.gradle/build.gradle when rewritten if protectGradle is true (default). Returns metadataFiles, baseGenerated, gradleRestored.",
+      },
+      {
+        name: "importBlockbenchItemModel",
+        kind: "WRITE",
+        purpose:
+          "Import a Blockbench item JSON (+ optional PNG) into models/custom and models/item with rewritten modid:item texture refs.",
+        args: `{ sourceModelPath: string, sourceTexturePath?: string, targetName?: string, overwrite?: boolean }`,
+        example: `importBlockbenchItemModel({ sourceModelPath: "D:/assets/sword.json", sourceTexturePath: "D:/assets/sword.png", targetName: "cool_sword" })`,
+        notes: "Non-GeckoLib item models only. Item use()/custom Java remains agent code.",
       },
     ],
   },
@@ -137,10 +146,10 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         name: "createGeckoLibElement",
         kind: "GECKOLIB",
         purpose:
-          "Create a supported GeckoLib animated element. Optional generateCode runs single-element generation after confirmed create.",
+          "Create a supported GeckoLib animated element. generateCode defaults to true (Java + registries).",
         args: `{ elementType: string, elementName: string, definition?: object, generateCode?: boolean, strict?: boolean }`,
         notes:
-          "Supports nested colors {value}, sounds/items {value}, and entity defaults (AI, deathTime, lerp, idle/walk). Create without generated Java is incomplete.",
+          "Supports nested colors {value}, sounds/items {value}, and entity defaults. Default generateCode=true for a usable MCreator base; set false for scaffold-only.",
       },
       {
         name: "updateGeckoLibElement",

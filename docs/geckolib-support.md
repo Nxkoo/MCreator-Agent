@@ -167,8 +167,9 @@ Each postcondition is `pass`, `fail`, or `unknown`. `confirmed` is true only whe
 failed or unknown postcondition does not trigger automatic rollback because the workspace may already contain useful
 partial state. Do not regenerate code while `confirmed` is false; inspect and reconcile the workspace first.
 
-Optional argument `generateCode: true` generates the new element (and base registry templates) after create when the
-generator supports single-element generation. Prefer that over full-workspace `regenerateCode`.
+`generateCode` **defaults to true**: after a confirmed create, the tool runs single-element generation (and base
+registry templates) when the generator supports it. Pass `generateCode: false` for scaffold-only. Prefer this path
+over full-workspace `regenerateCode`.
 
 The generic `createElement` tool rejects GeckoLib animated types with:
 
@@ -192,6 +193,22 @@ workspace is open):
   "merge": true
 }
 ```
+
+## Blockbench item models (non-GeckoLib)
+
+Use `importBlockbenchItemModel` for normal Java item models:
+
+```json
+{
+  "sourceModelPath": "C:/path/item.json",
+  "sourceTexturePath": "C:/path/item.png",
+  "targetName": "my_item",
+  "overwrite": true
+}
+```
+
+This writes `models/custom/<name>.json`, `models/item/<name>.json`, and rewrites texture refs to
+`assets/<modid>/textures/item/<name>.png` (`modid:item/<name>`). Custom item `use()` logic remains agent code.
 
 ## Single-element generation
 

@@ -65,6 +65,7 @@ class McpPortCompatibilityTest {
         assertToolExists(tools, "createGeckoLibElement");
         assertToolExists(tools, "updateGeckoLibElement");
         assertToolExists(tools, "generateModElement");
+        assertToolExists(tools, "importBlockbenchItemModel");
         assertToolExists(tools, "validateGeckoLibElement");
     }
 
