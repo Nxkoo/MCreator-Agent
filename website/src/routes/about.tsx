@@ -98,7 +98,10 @@ function About() {
               <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm">
                 <li>A typed MCP surface for real MCreator workspaces.</li>
                 <li>Validated support for MCreator versions, starting with 2024.4.</li>
-                <li>GeckoLib diagnostics, asset listing / import, scaffolding, and validation.</li>
+                <li>
+                  GeckoLib diagnostics, asset import, create/update, single-element generate, and
+                  validation.
+                </li>
                 <li>Strict local-first defaults.</li>
               </ul>
             </div>

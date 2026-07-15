@@ -194,14 +194,24 @@ public class McpServer {
         List<McpTypes.Tool> tools = new ArrayList<>();
         
         // Workspace management tools
-        tools.add(createTool("buildWorkspace", "Build the current MCreator workspace", 
-            Map.of("type", "object", "properties", Map.of())));
+        tools.add(createTool("buildWorkspace",
+            "Build the current MCreator workspace with mutation snapshot/report. Prefer awaiting deleted/modified file report; Gradle may continue asynchronously.",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "protectGradle", Map.of("type", "boolean", "description", "Restore mcreator.gradle/build.gradle if rewritten (default true)"),
+                       "awaitStartOnly", Map.of("type", "boolean", "description", "If true, skip short post-dispatch delay before diff")
+                   ))));
         
         tools.add(createTool("getWorkspaceInfo", "Get detailed workspace information",
             Map.of("type", "object", "properties", Map.of())));
         
-        tools.add(createTool("regenerateCode", "Regenerate code without building",
-            Map.of("type", "object", "properties", Map.of())));
+        tools.add(createTool("regenerateCode",
+            "Full-workspace code regeneration with snapshot/diff. Prefer generateModElement for single elements. May delete untracked Java.",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "protectGradle", Map.of("type", "boolean", "description", "Restore mcreator.gradle/build.gradle if rewritten (default true)"),
+                       "awaitStartOnly", Map.of("type", "boolean", "description", "If true, skip short post-dispatch delay before diff")
+                   ))));
         
         // Element operations
         tools.add(createTool("listModElements", "List mod elements with optional filtering",
@@ -232,6 +242,16 @@ public class McpServer {
                        "locked", Map.of("type", "boolean", "description", "Desired code lock state")
                    ),
                    "required", List.of("elementName", "locked"))));
+
+        tools.add(createTool("generateModElement",
+            "Generate code for one mod element via Generator#generateElement, optionally regenerate base registries, and protect gradle files",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "elementName", Map.of("type", "string", "description", "Name of the element to generate"),
+                       "generateBase", Map.of("type", "boolean", "description", "Also run generateBase for registries (default true)"),
+                       "protectGradle", Map.of("type", "boolean", "description", "Restore protected gradle files if rewritten (default true)")
+                   ),
+                   "required", List.of("elementName"))));
         
         // Testing tools
         tools.add(createTool("runClient", "Start Minecraft client",
@@ -254,14 +274,28 @@ public class McpServer {
                    ),
                    "required", List.of("assets"))));
 
-        tools.add(createTool("createGeckoLibElement", "Create a GeckoLib animated element conservatively. Some plugin-specific fields may still need to be configured in the MCreator UI.",
+        tools.add(createTool("createGeckoLibElement",
+            "Create a GeckoLib animated element. Pass a complete definition; optional generateCode=true generates Java after create.",
             Map.of("type", "object",
                    "properties", Map.of(
                        "elementType", Map.of("type", "string", "description", "Canonical type animatedentity, animateditem, animatedblock, or animatedarmor. Legacy gecko* aliases are accepted as input only."),
                        "elementName", Map.of("type", "string", "description", "Name of the new element"),
-                       "definition", Map.of("type", "object", "description", "Optional safe fields to initialize")
+                       "definition", Map.of("type", "object", "description", "Optional fields to initialize (primitives, colors {value}, sounds, etc.)"),
+                       "generateCode", Map.of("type", "boolean", "description", "If true, generate the element after create when confirmed"),
+                       "strict", Map.of("type", "boolean", "description", "If true, unsupported definition fields fail instead of skip")
                    ),
                    "required", List.of("elementType", "elementName"))));
+
+        tools.add(createTool("updateGeckoLibElement",
+            "Update a GeckoLib animated element definition through MCreator APIs (prefer over hand-editing .mod.json)",
+            Map.of("type", "object",
+                   "properties", Map.of(
+                       "elementName", Map.of("type", "string", "description", "Name of the element to update"),
+                       "definition", Map.of("type", "object", "description", "Fields to apply"),
+                       "strict", Map.of("type", "boolean", "description", "If true, unsupported definition fields fail instead of skip"),
+                       "merge", Map.of("type", "boolean", "description", "Reserved; updates always merge into existing storage")
+                   ),
+                   "required", List.of("elementName", "definition"))));
 
         tools.add(createTool("validateGeckoLibElement", "Validate a GeckoLib animated element without modifying the workspace",
             Map.of("type", "object",

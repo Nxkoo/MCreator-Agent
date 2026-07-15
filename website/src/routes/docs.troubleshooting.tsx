@@ -95,6 +95,42 @@ function Trouble() {
         </li>
       </ul>
 
+      <h2 className="mt-10 text-2xl text-foreground">
+        Entity created but no Java / missing registries
+      </h2>
+      <ul className="list-disc space-y-1.5 pl-5">
+        <li>
+          <code>createGeckoLibElement</code> scaffolds metadata only unless{" "}
+          <code>generateCode: true</code> was set.
+        </li>
+        <li>
+          Call <code>generateModElement</code> for that element (preferred over full{" "}
+          <code>regenerateCode</code>).
+        </li>
+        <li>
+          Confirm <code>confirmed: true</code> on create before generating.
+        </li>
+      </ul>
+
+      <h2 className="mt-10 text-2xl text-foreground">
+        Full regenerate deleted custom code or stripped mcreator.gradle
+      </h2>
+      <ul className="list-disc space-y-1.5 pl-5">
+        <li>
+          Prefer <code>generateModElement</code> for single elements.
+        </li>
+        <li>
+          <code>regenerateCode</code> reports <code>deletedFiles</code> /{" "}
+          <code>modifiedFiles</code> and can restore protected gradle files when{" "}
+          <code>protectGradle</code> is true (default).
+        </li>
+        <li>
+          Keep helpers registered in element <code>metadata.files</code> or outside generated
+          packages.
+        </li>
+        <li>Restore unexpected deletions from git before continuing.</li>
+      </ul>
+
       <h2 className="mt-10 text-2xl text-foreground">GeckoLib validation reports missing assets</h2>
       <ul className="list-disc space-y-1.5 pl-5">
         <li>Confirm the model, animation, or texture was imported into the workspace.</li>
@@ -102,6 +138,10 @@ function Trouble() {
           Check <code>targetName</code> if you renamed the asset during import.
         </li>
         <li>Open the element in MCreator UI and review asset references.</li>
+        <li>
+          Prefer <code>updateGeckoLibElement</code> over hand-editing <code>.mod.json</code> while
+          MCreator is open.
+        </li>
       </ul>
 
       <h2 className="mt-10 text-2xl text-foreground">Build or regenerate errors</h2>
@@ -113,6 +153,10 @@ function Trouble() {
           Run <code>validateGeckoLibElement</code> for GeckoLib elements.
         </li>
         <li>Check generated code lock state if applicable.</li>
+        <li>
+          Treat <code>status: "dispatched"</code> as not fully complete — inspect mutation reports
+          and Gradle logs.
+        </li>
         <li>Include logs when opening an issue.</li>
       </ul>
 

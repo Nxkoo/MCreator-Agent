@@ -63,6 +63,8 @@ class McpPortCompatibilityTest {
         assertToolExists(tools, "listGeckoLibAssets");
         assertToolExists(tools, "importGeckoLibAssets");
         assertToolExists(tools, "createGeckoLibElement");
+        assertToolExists(tools, "updateGeckoLibElement");
+        assertToolExists(tools, "generateModElement");
         assertToolExists(tools, "validateGeckoLibElement");
     }
 

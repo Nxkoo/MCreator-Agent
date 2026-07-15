@@ -10,13 +10,13 @@ export const Route = createFileRoute("/docs/geckolib")({
       {
         name: "description",
         content:
-          "GeckoLib support in MCreator Agent: diagnostics, asset listing, import, scaffolding, and validation.",
+          "GeckoLib support in MCreator Agent: diagnostics, asset import, create/update, single-element generate, and validation.",
       },
       { property: "og:title", content: "GeckoLib — MCreator Agent" },
       {
         property: "og:description",
         content:
-          "GeckoLib support in MCreator Agent: diagnostics, asset listing, import, scaffolding, and validation.",
+          "GeckoLib support in MCreator Agent: diagnostics, asset import, create/update, single-element generate, and validation.",
       },
       { property: "og:url", content: "/docs/geckolib" },
     ],
@@ -30,13 +30,14 @@ function Gecko() {
     <DocsLayout eyebrow="Usage" title="GeckoLib workflow">
       <p>
         GeckoLib support is active when Nerdy's GeckoLib Plugin is installed and enabled in the
-        workspace. MCreator Agent assists with diagnostics, asset listing / import, element creation
-        assistance, and validation. It does not imply full end-to-end animation authoring.
+        workspace. MCreator Agent assists with diagnostics, asset listing/import, element create and
+        update, single-element code generation, and validation. It does not imply full end-to-end
+        animation authoring.
       </p>
 
       <Callout variant="geckolib">
-        Supported with Nerdy's GeckoLib Plugin 6.0.2 for MCreator 2024.4. The agent proposes; you
-        approve.
+        Supported with Nerdy's GeckoLib Plugin 6.0.2 for MCreator 2024.4. Prefer{" "}
+        <code>generateModElement</code> over full-workspace <code>regenerateCode</code>.
       </Callout>
 
       <h2 className="mt-10 text-2xl text-foreground">Requirements</h2>
@@ -60,7 +61,7 @@ function Gecko() {
         <li>animatedarmor</li>
       </ul>
 
-      <h2 className="mt-10 text-2xl text-foreground">Supported workflow</h2>
+      <h2 className="mt-10 text-2xl text-foreground">Recommended workflow</h2>
       <ol className="list-decimal space-y-2 pl-5">
         <li>
           <strong>Check status</strong>: Call <code>getGeckoLibStatus</code> to confirm the plugin is
@@ -72,25 +73,37 @@ function Gecko() {
         </li>
         <li>
           <strong>Import assets</strong>: Import finished model, animation, or texture files with{" "}
-          <code>importGeckoLibAssets</code>.
+          <code>importGeckoLibAssets</code> (dual-writes authoring + runtime paths).
         </li>
         <li>
-          <strong>Create / scaffold element</strong>: Scaffold a new GeckoLib-aware element with{" "}
-          <code>createGeckoLibElement</code>.
+          <strong>Create element</strong>: Use <code>createGeckoLibElement</code> with a complete{" "}
+          <code>definition</code> (hitbox, model, texture, animations, optional{" "}
+          <code>headMovement</code>). Optionally pass <code>generateCode: true</code>.
         </li>
         <li>
-          <strong>Open in MCreator UI</strong>: If plugin-specific fields still need configuration,
-          open the element in MCreator.
+          <strong>Generate code</strong>: If create did not generate Java, call{" "}
+          <code>generateModElement</code> (preferred over full <code>regenerateCode</code>).
         </li>
         <li>
-          <strong>Validate references</strong>: Run <code>validateGeckoLibElement</code> to catch
-          unsupported types and missing known model/texture references.
+          <strong>Update if needed</strong>: Use <code>updateGeckoLibElement</code> instead of
+          hand-editing <code>.mod.json</code> while the workspace is open.
         </li>
         <li>
-          <strong>Build</strong>: Run <code>regenerateCode</code> or <code>buildWorkspace</code> to
-          confirm the workspace still compiles.
+          <strong>Validate</strong>: Run <code>validateGeckoLibElement</code> for asset and codegen
+          postconditions.
+        </li>
+        <li>
+          <strong>Build</strong>: Use <code>buildWorkspace</code> (mutation report) or local{" "}
+          <code>compileJava</code>.
         </li>
       </ol>
+
+      <Callout variant="warning">
+        <code>createGeckoLibElement</code> alone is a scaffold unless generation ran. Treat create
+        without entity/model/renderer/init as incomplete. Full <code>regenerateCode</code> can delete
+        untracked Java and rewrite <code>mcreator.gradle</code> — the tool now snapshots and can
+        restore protected gradle files, but single-element generate is still safer.
+      </Callout>
 
       <h2 className="mt-10 text-2xl text-foreground">Examples</h2>
 
@@ -113,7 +126,7 @@ function Gecko() {
       />
 
       <h3 className="mt-6 text-xl text-foreground">listGeckoLibAssets</h3>
-      <p>Returns all known GeckoLib models, animations, and textures in the workspace.</p>
+      <p>Returns known GeckoLib models, animations, and textures (authoring + runtime paths).</p>
       <CodeBlock
         language="json"
         code={`{
@@ -128,8 +141,8 @@ function Gecko() {
       <h3 className="mt-6 text-xl text-foreground">importGeckoLibAssets</h3>
       <p>
         Import local model, animation, or texture files into validated workspace paths.{" "}
-        <code>targetName</code> can be used to rename the copied asset. <code>geo</code> is accepted
-        as an alias for <code>geo_model</code>.
+        <code>geo</code> is accepted as an alias for <code>geo_model</code>. Texture subdir{" "}
+        <code>entities</code> aliases <code>entity</code>.
       </p>
       <CodeBlock
         language="json"
@@ -141,8 +154,7 @@ function Gecko() {
       "assets": [
         {
           "sourcePath": "D:/assets/zombie_warden.geo.json",
-          "kind": "geo",
-          "targetName": "zombie_warden.geo.json"
+          "kind": "geo_model"
         },
         {
           "sourcePath": "D:/assets/zombie_warden.animation.json",
@@ -161,7 +173,11 @@ function Gecko() {
       />
 
       <h3 className="mt-6 text-xl text-foreground">createGeckoLibElement</h3>
-      <p>Assist with scaffolding a supported GeckoLib animated element.</p>
+      <p>
+        Create a supported animated element. Definition supports primitives, colors as{" "}
+        <code>{"{ value: intARGB }"}</code>, sounds/items as <code>{"{ value: string }"}</code>, and
+        more. Unknown nested shapes are skipped with warnings unless <code>strict: true</code>.
+      </p>
       <CodeBlock
         language="json"
         code={`{
@@ -171,26 +187,79 @@ function Gecko() {
     "arguments": {
       "elementType": "animatedentity",
       "elementName": "ZombieWarden",
-      "definition": {}
+      "generateCode": true,
+      "definition": {
+        "mobName": "Zombie Warden",
+        "mobModelTexture": "zombie_warden.png",
+        "model": "zombie_warden.geo.json",
+        "modelWidth": 0.8,
+        "modelHeight": 2.0,
+        "animation1": "idle",
+        "animation2": "walk",
+        "enable2": true,
+        "headMovement": true,
+        "hasSpawnEgg": true,
+        "spawnEggBaseColor": { "value": -16711936 },
+        "spawnEggDotColor": { "value": -1 }
+      }
     }
   }
 }`}
       />
       <Callout variant="note">
-        <code>createGeckoLibElement</code> assists with scaffolding. Some fields may still need to be
-        reviewed or completed in the MCreator UI. Its response reports in-memory recognition,
-        definition persistence, workspace-entry persistence, and <code>confirmed</code>. Do not
-        regenerate when <code>confirmed</code> is false.
+        Response reports <code>confirmed</code>, <code>appliedFields</code>,{" "}
+        <code>skippedFields</code>, and optionally <code>generatedFiles</code>. Do not full-regen when{" "}
+        <code>confirmed</code> is false.
       </Callout>
 
-      <Callout variant="warning">
-        Refreshing the workspace tab does not reload externally edited workspace metadata from disk.
-        A successful Gradle build also does not prove that the open MCreator UI or MCP model
-        recognizes the element.
-      </Callout>
+      <h3 className="mt-6 text-xl text-foreground">updateGeckoLibElement</h3>
+      <p>
+        Update definition fields through MCreator APIs. Prefer this over hand-editing{" "}
+        <code>elements/*.mod.json</code> while the workspace is open.
+      </p>
+      <CodeBlock
+        language="json"
+        code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "updateGeckoLibElement",
+    "arguments": {
+      "elementName": "ZombieWarden",
+      "definition": {
+        "modelWidth": 2.0,
+        "modelHeight": 5.8,
+        "headMovement": true
+      }
+    }
+  }
+}`}
+      />
+
+      <h3 className="mt-6 text-xl text-foreground">generateModElement</h3>
+      <p>
+        Generate code for one element via MCreator <code>Generator#generateElement</code>, optionally
+        run <code>generateBase</code> for registries, and protect gradle files if rewritten.
+      </p>
+      <CodeBlock
+        language="json"
+        code={`{
+  "method": "tools/call",
+  "params": {
+    "name": "generateModElement",
+    "arguments": {
+      "elementName": "ZombieWarden",
+      "generateBase": true,
+      "protectGradle": true
+    }
+  }
+}`}
+      />
 
       <h3 className="mt-6 text-xl text-foreground">validateGeckoLibElement</h3>
-      <p>Check if the element's configured model or texture references exist.</p>
+      <p>
+        Check assets on disk, optional <code>metadata.files</code> companions, and head-movement
+        caveats.
+      </p>
       <CodeBlock
         language="json"
         code={`{
@@ -204,28 +273,26 @@ function Gecko() {
 }`}
       />
 
-      <h2 className="mt-10 text-2xl text-foreground">What still needs MCreator UI</h2>
+      <h2 className="mt-10 text-2xl text-foreground">Head movement</h2>
       <p>
-        Some plugin-specific fields may still need to be configured in MCreator, especially when they
-        depend on UI-only plugin behavior or complex plugin storage.
+        Setting <code>headMovement: true</code> is not always enough for custom Blockbench layouts.
+        If <code>nose</code> / <code>headwear</code> are siblings of <code>head</code> (not children),
+        generated look-at logic may need multi-bone rotation after lock.
       </p>
+
+      <h2 className="mt-10 text-2xl text-foreground">What still needs MCreator UI</h2>
       <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
-        <li>Advanced animation controllers.</li>
-        <li>Custom state transitions.</li>
-        <li>Complex model setup.</li>
-        <li>Plugin-specific configuration not safely exposed by MCP.</li>
-        <li>Anything that validation reports as incomplete.</li>
+        <li>Advanced animation controllers and state transitions.</li>
+        <li>Complex model setup not safely exposed by MCP.</li>
+        <li>Anything validation reports as incomplete.</li>
       </ul>
 
       <h2 className="mt-10 text-2xl text-foreground">What's not in scope yet</h2>
       <ul className="list-disc space-y-1.5 pl-5 text-muted-foreground">
         <li>End-to-end automatic animation authoring from a text prompt.</li>
-        <li>Editing model geometry.</li>
-        <li>Rigging or skeleton inference.</li>
+        <li>Editing model geometry / rigging.</li>
         <li>Full controller / transition / keyframe authoring.</li>
-        <li>
-          Silent edits to plugin-specific fields the MCP cannot safely validate.
-        </li>
+        <li>Automatic reparenting of head bones in geo JSON.</li>
       </ul>
 
       <Callout variant="warning">

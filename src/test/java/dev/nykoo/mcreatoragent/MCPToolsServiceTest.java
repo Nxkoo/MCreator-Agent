@@ -59,7 +59,8 @@ class MCPToolsServiceTest {
         return new GeckoLibSupportService.CreateElementResult(
                 confirmed ? "Created and confirmed" : "Created but unconfirmed",
                 List.of(), List.of(), confirmed, "NeedleScratch", "animateditem", "needle_scratch",
-                "pass", "pass", "pass", confirmed ? "pass" : "unknown", List.of(), warnings);
+                "pass", "pass", "pass", confirmed ? "pass" : "unknown", List.of(), warnings,
+                List.of(), List.of(), List.of());
     }
 
     private JsonNode parsePayload(McpTypes.ToolResult result) throws Exception {

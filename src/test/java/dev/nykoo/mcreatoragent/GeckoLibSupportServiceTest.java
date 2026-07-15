@@ -159,7 +159,8 @@ class GeckoLibSupportServiceTest {
     void creationResultSerializationIncludesConfirmationLayers() {
         GeckoLibSupportService.CreateElementResult result = new GeckoLibSupportService.CreateElementResult(
                 "Created", List.of(), List.of(), false, "NeedleScratch", "animateditem", "needle_scratch",
-                "pass", "pass", "pass", "unknown", List.of(), List.of("manual refresh may be required"));
+                "pass", "pass", "pass", "unknown", List.of(), List.of("manual refresh may be required"),
+                List.of("model"), List.of(), List.of());
 
         JsonNode json = new ObjectMapper().valueToTree(result);
 

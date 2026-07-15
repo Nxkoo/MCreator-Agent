@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import javax.swing.SwingUtilities;
 
 /**
@@ -37,15 +38,16 @@ public class MCPToolsService {
         LOG.info("Registering MCreator tools with MCP server");
 
         // Workspace management tools
-        mcpServer.registerHandler("buildWorkspace", params -> executeBuildWorkspace(mcreator));
+        mcpServer.registerHandler("buildWorkspace", params -> executeBuildWorkspace(mcreator, params));
         mcpServer.registerHandler("getWorkspaceInfo", params -> getWorkspaceInfo(mcreator));
-        mcpServer.registerHandler("regenerateCode", params -> executeRegenerateCode(mcreator));
+        mcpServer.registerHandler("regenerateCode", params -> executeRegenerateCode(mcreator, params));
 
         // Element operations
         mcpServer.registerHandler("listModElements", params -> listModElements(mcreator, params));
         mcpServer.registerHandler("createElement", params -> createElement(mcreator, params));
         mcpServer.registerHandler("deleteElement", params -> deleteElement(mcreator, params));
         mcpServer.registerHandler("setModElementLock", params -> setModElementLock(mcreator, params));
+        mcpServer.registerHandler("generateModElement", params -> generateModElement(mcreator, params));
 
         // Testing tools
         mcpServer.registerHandler("runClient", params -> executeRunClient(mcreator));
@@ -56,29 +58,21 @@ public class MCPToolsService {
         mcpServer.registerHandler("listGeckoLibAssets", params -> listGeckoLibAssets(mcreator));
         mcpServer.registerHandler("importGeckoLibAssets", params -> importGeckoLibAssets(mcreator, params));
         mcpServer.registerHandler("createGeckoLibElement", params -> createGeckoLibElement(mcreator, params));
+        mcpServer.registerHandler("updateGeckoLibElement", params -> updateGeckoLibElement(mcreator, params));
         mcpServer.registerHandler("validateGeckoLibElement", params -> validateGeckoLibElement(mcreator, params));
 
         LOG.info("Registered MCreator tools with GeckoLib support");
     }
 
     /**
-     * Build workspace tool
+     * Build workspace tool. Snapshots protected files, starts the action, and reports a mutation diff.
+     * Note: full Gradle completion still depends on MCreator's async build pipeline; this reports
+     * immediate file-level side effects and restores protected gradle files when requested.
      */
-    private McpTypes.ToolResult executeBuildWorkspace(MCreator mcreator) {
+    private McpTypes.ToolResult executeBuildWorkspace(MCreator mcreator, Map<String, Object> params) {
         LOG.info("Executing buildWorkspace tool");
-
-        try {
-            if (mcreator.getWorkspace() == null) {
-                return createErrorResult("No workspace loaded");
-            }
-
-            return dispatchOnEdt("Workspace build initiated successfully",
-                    () -> mcreator.getActionRegistry().buildWorkspace.doAction());
-
-        } catch (Exception e) {
-            LOG.error("Error building workspace", e);
-            return createErrorResult("Failed to build workspace: " + e.getMessage());
-        }
+        return executeGuardedWorkspaceAction(mcreator, params, "build",
+                () -> mcreator.getActionRegistry().buildWorkspace.doAction());
     }
 
     /**
@@ -112,22 +106,74 @@ public class MCPToolsService {
     }
 
     /**
-     * Regenerate code tool
+     * Regenerate code tool with snapshot/diff of workspace files and protected gradle restore.
+     * Prefer {@code generateModElement} for single GeckoLib elements.
      */
-    private McpTypes.ToolResult executeRegenerateCode(MCreator mcreator) {
+    private McpTypes.ToolResult executeRegenerateCode(MCreator mcreator, Map<String, Object> params) {
         LOG.info("Executing regenerateCode tool");
+        return executeGuardedWorkspaceAction(mcreator, params, "regenerate",
+                () -> mcreator.getActionRegistry().regenerateCode.doAction());
+    }
 
+    private McpTypes.ToolResult executeGuardedWorkspaceAction(MCreator mcreator, Map<String, Object> params,
+            String actionName, Runnable action) {
         try {
-            if (mcreator.getWorkspace() == null) {
+            Workspace workspace = mcreator.getWorkspace();
+            if (workspace == null) {
                 return createErrorResult("No workspace loaded");
             }
 
-            return dispatchOnEdt("Code regeneration initiated successfully",
-                    () -> mcreator.getActionRegistry().regenerateCode.doAction());
+            boolean protectGradle = params == null || params.get("protectGradle") == null
+                    || Boolean.TRUE.equals(params.get("protectGradle"))
+                    || "true".equalsIgnoreCase(String.valueOf(params.get("protectGradle")));
+            boolean awaitStartOnly = params != null && Boolean.TRUE.equals(params.get("awaitStartOnly"));
 
+            Path workspaceDir = workspace.getWorkspaceFolder().toPath();
+            WorkspaceMutationGuard.WorkspaceSnapshot snapshot =
+                    WorkspaceMutationGuard.snapshot(workspaceDir, WorkspaceMutationGuard.DEFAULT_PROTECT_RELATIVE_PATHS);
+
+            long started = System.currentTimeMillis();
+            // Full regen/build are long-running UI+Gradle pipelines. We always wait for the action
+            // dispatch itself, then optionally sample post-start filesystem mutations.
+            McpTypes.ToolResult dispatchResult = dispatchOnEdt(
+                    actionName + " action dispatched on MCreator UI thread", action, 120);
+            if (Boolean.TRUE.equals(dispatchResult.getIsError())) {
+                return dispatchResult;
+            }
+
+            // Give the regen thread a brief head start so immediate destructive deletes are visible.
+            if (!awaitStartOnly) {
+                try {
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            WorkspaceMutationGuard.MutationReport report = WorkspaceMutationGuard.diffAndProtect(workspaceDir, snapshot,
+                    WorkspaceMutationGuard.DEFAULT_PROTECT_RELATIVE_PATHS, protectGradle);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("status", "dispatched");
+            result.put("action", actionName);
+            result.put("durationMs", System.currentTimeMillis() - started);
+            result.put("deletedFiles", report.deletedFiles());
+            result.put("addedFiles", report.addedFiles());
+            result.put("modifiedFiles", report.modifiedFiles());
+            result.put("restoredProtectedFiles", report.restoredProtectedFiles());
+            result.put("warnings", new ArrayList<>(report.warnings()));
+            result.put("note",
+                    "Action was dispatched; full Gradle/regen completion may continue asynchronously in MCreator. "
+                            + "Inspect deletedFiles/modifiedFiles and prefer generateModElement for single elements.");
+            if (!report.deletedFiles().isEmpty()) {
+                @SuppressWarnings("unchecked")
+                List<String> warnings = (List<String>) result.get("warnings");
+                warnings.add("Workspace mutation deleted files; review deletedFiles before continuing.");
+            }
+            return createJsonResult(result);
         } catch (Exception e) {
-            LOG.error("Error regenerating code", e);
-            return createErrorResult("Failed to regenerate code: " + e.getMessage());
+            LOG.error("Error executing guarded workspace action {}", actionName, e);
+            return createErrorResult("Failed to " + actionName + ": " + e.getMessage());
         }
     }
 
@@ -426,6 +472,37 @@ public class MCPToolsService {
         }
     }
 
+    private McpTypes.ToolResult updateGeckoLibElement(MCreator mcreator, Map<String, Object> params) {
+        try {
+            return createGeckoLibCreationResult(geckoLibSupportService.updateElement(mcreator, params));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return createErrorResult(e.getMessage());
+        } catch (Exception e) {
+            LOG.error("Error updating GeckoLib element", e);
+            return createErrorResult("Failed to update GeckoLib element: " + e.getMessage());
+        }
+    }
+
+    private McpTypes.ToolResult generateModElement(MCreator mcreator, Map<String, Object> params) {
+        try {
+            String elementName = params == null ? null : (String) params.get("elementName");
+            boolean generateBase = params == null || params.get("generateBase") == null
+                    || Boolean.TRUE.equals(params.get("generateBase"))
+                    || "true".equalsIgnoreCase(String.valueOf(params.get("generateBase")));
+            boolean protectGradle = params == null || params.get("protectGradle") == null
+                    || Boolean.TRUE.equals(params.get("protectGradle"))
+                    || "true".equalsIgnoreCase(String.valueOf(params.get("protectGradle")));
+            GeckoLibSupportService.GenerateElementResult result =
+                    geckoLibSupportService.generateModElement(mcreator, elementName, generateBase, protectGradle);
+            return createJsonResult(result, !"completed".equals(result.status()) && !"skipped_locked".equals(result.status()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return createErrorResult(e.getMessage());
+        } catch (Exception e) {
+            LOG.error("Error generating mod element", e);
+            return createErrorResult("Failed to generate mod element: " + e.getMessage());
+        }
+    }
+
     private McpTypes.ToolResult validateGeckoLibElement(MCreator mcreator, Map<String, Object> params) {
         try {
             Workspace workspace = mcreator.getWorkspace();
@@ -438,6 +515,10 @@ public class MCPToolsService {
     }
 
     private McpTypes.ToolResult dispatchOnEdt(String successMessage, Runnable action) {
+        return dispatchOnEdt(successMessage, action, 5);
+    }
+
+    private McpTypes.ToolResult dispatchOnEdt(String successMessage, Runnable action, int timeoutSeconds) {
         if (SwingUtilities.isEventDispatchThread()) {
             action.run();
             return createSuccessResult(successMessage);
@@ -454,7 +535,7 @@ public class MCPToolsService {
         });
 
         try {
-            dispatch.get(5, TimeUnit.SECONDS);
+            dispatch.get(Math.max(1, timeoutSeconds), TimeUnit.SECONDS);
             return createSuccessResult(successMessage);
         } catch (Exception e) {
             return createErrorResult("Failed to dispatch action on MCreator UI thread: " + e.getMessage());

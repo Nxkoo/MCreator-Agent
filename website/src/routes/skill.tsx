@@ -26,7 +26,7 @@ export const Route = createFileRoute("/skill")({
       {
         name: "description",
         content:
-          "A companion Agent Skill that teaches AI coding agents safer MCreator workflows, generated-code boundaries, GeckoLib awareness, and validation discipline.",
+          "An Agent Skill for compatible AI coding agents that teaches safer MCreator workflows, generated-code boundaries, GeckoLib awareness, and validation discipline.",
       },
       {
         property: "og:title",
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/skill")({
   component: SkillLanding,
 });
 
-const AGENTS = ["Codex", "Claude Code", "Cursor", "Gemini", "Windsurf", "Other coding agents"];
+const AGENTS = ["Codex", "Claude Code", "Cursor", "Other compatible AI coding agents"];
 
 const TEACHES = [
   {
@@ -70,12 +70,12 @@ const TEACHES = [
   {
     Icon: Workflow,
     title: "GeckoLib workflow awareness",
-    body: "Read real assets and metadata before making animation, model, or renderer decisions.",
+    body: "Prefer create → generateModElement over full regen; never treat scaffold-only create as done.",
   },
   {
     Icon: PackageCheck,
     title: "Validation and build discipline",
-    body: "Require focused validation, regeneration review, builds, and an explicit task report.",
+    body: "Require multi-layer validation, mutation reports after regen, builds, and an explicit task report.",
   },
 ];
 
@@ -111,8 +111,9 @@ function SkillLanding() {
               <span className="italic text-primary">MCreator modding.</span>
             </h1>
             <p className="mt-6 max-w-3xl text-[17px] leading-relaxed text-muted-foreground">
-              A companion skill that teaches AI coding agents how to work with MCreator projects,
-              generated code boundaries, mod elements, GeckoLib workflows, and validation steps.
+              An Agent Skill that teaches compatible AI coding agents how to work with MCreator
+              projects, generated code boundaries, mod elements, GeckoLib workflows, and validation
+              steps. It works standalone and optionally pairs with MCreator Agent.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-2">
@@ -196,8 +197,8 @@ function SkillLanding() {
             <SectionLabel>01 · Install</SectionLabel>
             <h2 className="text-4xl text-foreground md:text-5xl">Give your agent the skill.</h2>
             <p className="mt-4 text-muted-foreground">
-              Use your agent's supported skill installation flow. The repository follows the Agent
-              Skills format and includes manual installation instructions.
+              Install the skill with the open skills CLI. Use the general command or select an
+              agent-specific command documented by the skill repository.
             </p>
           </div>
           <div>
@@ -207,20 +208,20 @@ function SkillLanding() {
                   id: "ecosystem",
                   label: "Skills ecosystem",
                   command: "npx skills add Nxkoo/mcreator-skill",
-                  note: "Confirm this install method is supported by your agent and the skill repository before using it.",
+                  note: "Installs the skill with the open skills CLI.",
                 },
                 {
-                  id: "codex",
-                  label: "Codex user skill",
-                  command:
-                    'git clone https://github.com/Nxkoo/mcreator-skill.git "$env:USERPROFILE\\.agents\\skills\\mcreator-ai"',
-                  note: "Restart Codex if the skill does not appear immediately.",
+                  id: "agent-specific",
+                  label: "Agent-specific",
+                  command: `npx skills add Nxkoo/mcreator-skill --skill mcreator-skill -a codex
+npx skills add Nxkoo/mcreator-skill --skill mcreator-skill -a cursor
+npx skills add Nxkoo/mcreator-skill --skill mcreator-skill -a claude-code`,
                 },
               ]}
             />
             <p className="mt-4 text-sm text-muted-foreground">
-              Manual fallback: clone or download the skill repository and follow the instructions in
-              its README.{" "}
+              The skill remains installable when the public skills.sh page is still indexing or
+              unavailable.{" "}
               <a
                 href="https://github.com/Nxkoo/mcreator-skill"
                 target="_blank"
@@ -244,8 +245,8 @@ function SkillLanding() {
                 Reusable guidance for coding agents.
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Use it with any coding agent that supports reusable instructions, skills, or
-                project-level guidance.
+                Use it with compatible AI coding agents that support reusable instructions, skills,
+                or project-level guidance.
               </p>
             </div>
             <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">

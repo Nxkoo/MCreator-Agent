@@ -142,7 +142,15 @@ The tool validates:
 - `elementType` is one of the supported animated registry names
 - `elementName` is a valid Java identifier and is not already used
 
-Creation is conservative. It creates the MCreator mod element and storage through generic MCreator APIs and reflection from the registered `ModElementType` storage class. It applies only simple public fields explicitly provided in `definition` and uses basic fallback names/models for known string fields.
+Creation creates the MCreator mod element and storage through generic MCreator APIs and reflection from the registered
+`ModElementType` storage class. Definition application supports:
+
+- primitives / strings / booleans / lists
+- nested color maps `{ "value": <intARGB>, "falpha": <number> }` for `java.awt.Color` fields
+- nested `{ "value": "..." }` for `Sound` and `MItemBlock` fields
+- nested number/logic/procedure wrappers when field types match
+
+Unknown nested shapes are **skipped with a warning** (or rejected in `strict: true` mode) instead of failing the whole create.
 
 After creation, the tool force-saves through MCreator's workspace persistence API and reports independent
 postconditions:
@@ -152,18 +160,62 @@ postconditions:
 - `definitionLoadable`
 - `workspaceEntryStored`
 - `confirmed`
+- `appliedFields` / `skippedFields` (when available)
+- `generatedFiles` (when `generateCode` was requested and generation ran)
 
 Each postcondition is `pass`, `fail`, or `unknown`. `confirmed` is true only when every postcondition passes. A
 failed or unknown postcondition does not trigger automatic rollback because the workspace may already contain useful
 partial state. Do not regenerate code while `confirmed` is false; inspect and reconcile the workspace first.
 
-After creation, open the element in the MCreator UI and configure plugin-specific fields and asset references.
+Optional argument `generateCode: true` generates the new element (and base registry templates) after create when the
+generator supports single-element generation. Prefer that over full-workspace `regenerateCode`.
 
 The generic `createElement` tool rejects GeckoLib animated types with:
 
 ```text
 This is a GeckoLib element type. Use createGeckoLibElement instead.
 ```
+
+## Element Update
+
+Use `updateGeckoLibElement` to change definition fields through MCreator APIs (do not hand-edit `.mod.json` while the
+workspace is open):
+
+```json
+{
+  "elementName": "TestAnimatedEntity",
+  "definition": {
+    "modelWidth": 2.0,
+    "modelHeight": 5.8,
+    "headMovement": true
+  },
+  "merge": true
+}
+```
+
+## Single-element generation
+
+Use `generateModElement`:
+
+```json
+{
+  "elementName": "TestAnimatedEntity",
+  "generateBase": true,
+  "protectGradle": true
+}
+```
+
+This calls MCreator `Generator#generateElement` for one element and optionally `generateBase` for registries.
+Protected files such as `mcreator.gradle` are snapshotted and restored when mutation rewrites them.
+
+Prefer this over full `regenerateCode`.
+
+## Full regenerate / build
+
+`regenerateCode` and `buildWorkspace` must report completion status. They are **not** safe to treat as
+fire-and-forget. Full regenerate can delete untracked package files and rewrite gradle templates.
+
+When available, responses include `status`, `deletedFiles`, `modifiedFiles`, `restoredProtectedFiles`, and `warnings`.
 
 ## Validation
 
@@ -183,10 +235,9 @@ The validator is read-only. It checks:
 - element exists
 - element type is one of the supported GeckoLib animated types
 - GeckoLib Plugin and API status diagnostics
-- known asset reference fields when they can be inspected safely
-- referenced model and texture existence for known fields
-
-Some plugin-specific fields cannot be inspected safely in the MVP. The response may include warnings when validation is partial.
+- known asset reference fields (geo/texture/animation) on disk
+- generated Java companions when metadata/files already point at them
+- `headMovement` caveat when enabled
 
 ## Recommended Flow
 
@@ -196,30 +247,28 @@ Some plugin-specific fields cannot be inspected safely in the MVP. The response 
 4. Call `getGeckoLibStatus`.
 5. Import assets using `importGeckoLibAssets`.
 6. List assets using `listGeckoLibAssets`.
-7. Create an element using `createGeckoLibElement`.
-8. Open the element in MCreator UI and configure remaining plugin fields.
+7. Create an element using `createGeckoLibElement` with a complete definition (or `generateCode: true`).
+8. If create did not generate code, call `generateModElement`.
 9. Validate using `validateGeckoLibElement`.
-10. Regenerate code and build.
+10. Build with completion-aware `buildWorkspace` or local `compileJava`.
 
 Refreshing the workspace tab redraws the current in-memory model; it does not reload externally edited `.mcreator`
 or `elements/*.mod.json` files from disk. A successful Gradle build also does not prove that the open MCreator UI or
 MCP workspace model recognizes an element.
 
-## Not Included In MVP
+## Not Included
 
-- No `updateGeckoLibElement`.
 - No `workspace://geckolib/schema`.
 - No automatic schema generation from third-party storage classes.
 - No silent enabling of the GeckoLib API.
 - No static dependency on GeckoLib Plugin classes.
 - No bundled GeckoLib Plugin.
-- No direct editing of existing GeckoLib serialized JSON outside MCreator APIs.
+- No automatic reparenting of Blockbench head bones in geo JSON.
 
 ## Known Limitations
 
 - The inspected plugin artifact was local zip `Nerdys_Geckolib_Plugin (6).zip`, SHA-256 `0B817423F444242F7AB4455E026B1178D274EC962EC32C2147B175D9AFB936C0`.
-- The upstream Git commit for the inspected zip was not confirmed because network access was blocked during research.
-- The plugin is archived upstream, so compatibility should be treated as best-effort for that artifact and MCreator 2024.4.
-- Full correctness of created animated elements still depends on opening them in MCreator UI and completing plugin-specific fields.
-- Geo/animation import dual-writes authoring (`models/`) and runtime (`assets/<modid>/geo|animations`) paths so both MCreator UI pickers and GeckoLib `ResourceLocation`s resolve.
+- The plugin is archived upstream; compatibility is best-effort for that artifact and MCreator 2024.4.
+- Full regenerate remains risky for custom package classes not listed in any element `metadata.files`.
+- Geo/animation import dual-writes authoring (`models/`) and runtime (`assets/<modid>/geo|animations`) paths.
 - Texture `entities` is accepted as an alias of MCreator texture type `entity`.

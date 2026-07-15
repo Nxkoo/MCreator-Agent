@@ -20,8 +20,10 @@ import net.mcreator.element.parts.Sound;
 import net.mcreator.element.parts.procedure.LogicProcedure;
 import net.mcreator.element.parts.procedure.NumberProcedure;
 import net.mcreator.element.parts.procedure.Procedure;
+import net.mcreator.generator.GeneratorFile;
 
 import javax.swing.SwingUtilities;
+import java.awt.Color;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -44,6 +46,8 @@ public final class GeckoLibSupportService {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> TEXTURE_EXTENSIONS = Set.of(".png");
+    private static final String DEFAULT_CREATURE_AI_XML =
+            "<xml xmlns=\"https://developers.google.com/blockly/xml\"><block type=\"aitasks_container\" deletable=\"false\" x=\"40\" y=\"40\"><next><block type=\"wander\"><field name=\"speed\">1</field><field name=\"condition\">null,null</field><next><block type=\"look_around\"><field name=\"condition\">null,null</field><next><block type=\"swim_in_water\"><field name=\"condition\">null,null</field></block></next></block></next></block></next></block></xml>";
 
     public GeckoLibStatus getStatus(MCreator mcreator) {
         return getStatus(mcreator == null ? null : mcreator.getWorkspace());
@@ -246,7 +250,11 @@ public final class GeckoLibSupportService {
             problems.add("Element definition could not be loaded.");
         } else {
             problems.addAll(validateKnownAssetReferences(workspace, generatableElement));
-            warnings.add("Element exists, but some GeckoLib-specific fields could not be inspected safely.");
+            warnings.addAll(validateGeneratedCompanions(workspace, element));
+            if (Boolean.TRUE.equals(readBooleanField(generatableElement, "headMovement"))) {
+                warnings.add("headMovement=true: verify generated/locked model rotates the correct bone name(s); "
+                        + "sibling bones of head (nose/headwear) may not follow automatically.");
+            }
         }
 
         return new ValidationResult(problems.isEmpty(), element.getName(), elementType, problems, warnings);
@@ -321,12 +329,9 @@ public final class GeckoLibSupportService {
         CreationConfirmation confirmation = evaluateCreationConfirmation(recognizedInMemory,
                 definitionStored, definitionLoadable, workspaceEntryStored);
 
-        String message = confirmation.confirmed()
-                ? "Created and confirmed GeckoLib element '" + elementName.trim()
-                        + "'. It may still need to be opened in the MCreator editor to configure plugin-specific fields and asset references."
-                : "Created GeckoLib element '" + elementName.trim()
-                        + "', but persistence and recognition are not fully confirmed.";
+        List<String> generatedFiles = List.of();
         List<String> warnings = new ArrayList<>(storage.warnings());
+        warnings.addAll(storage.skippedFields());
         if (saveWarning != null) {
             warnings.add(saveWarning);
         }
@@ -334,9 +339,170 @@ public final class GeckoLibSupportService {
         if (!confirmation.confirmed()) {
             warnings.add("Do not regenerate code until the failed or unknown creation postconditions are reconciled.");
         }
-        return new CreateElementResult(message, storage.appliedDefaults(), storage.warnings(), confirmation.confirmed(),
-                elementName.trim(), normalizedElementType, modElement.getRegistryName(), recognizedInMemory,
-                definitionStored, definitionLoadable, workspaceEntryStored, confirmation.problems(), warnings);
+
+        boolean generateCode = booleanParam(params, "generateCode", false);
+        if (generateCode && confirmation.confirmed()) {
+            GenerateElementResult generateResult = generateModElement(mcreator, elementName.trim(), true, true);
+            generatedFiles = generateResult.generatedFiles();
+            warnings.addAll(generateResult.warnings());
+            if (!"completed".equals(generateResult.status())) {
+                warnings.add("createGeckoLibElement generateCode did not complete: " + generateResult.message());
+            }
+        } else if (generateCode) {
+            warnings.add("generateCode was requested but skipped because creation postconditions are not confirmed.");
+        }
+
+        String message = confirmation.confirmed()
+                ? (generatedFiles.isEmpty()
+                        ? "Created and confirmed GeckoLib element '" + elementName.trim()
+                                + "'. Code is not generated yet; call generateModElement or pass generateCode=true."
+                        : "Created, confirmed, and generated GeckoLib element '" + elementName.trim() + "'.")
+                : "Created GeckoLib element '" + elementName.trim()
+                        + "', but persistence and recognition are not fully confirmed.";
+        return new CreateElementResult(message, storage.appliedDefaults(), storage.validationWarnings(),
+                confirmation.confirmed(), elementName.trim(), normalizedElementType, modElement.getRegistryName(),
+                recognizedInMemory, definitionStored, definitionLoadable, workspaceEntryStored,
+                confirmation.problems(), warnings, storage.appliedFields(), storage.skippedFields(), generatedFiles);
+    }
+
+    public CreateElementResult updateElement(MCreator mcreator, Map<String, Object> params) {
+        String elementName = stringParam(params, "elementName");
+        if (elementName == null || elementName.isBlank()) {
+            throw new IllegalArgumentException("Element name is required");
+        }
+        Workspace workspace = mcreator == null ? null : mcreator.getWorkspace();
+        if (workspace == null) {
+            throw new IllegalArgumentException("No workspace loaded");
+        }
+        ModElement modElement = workspace.getModElementByName(elementName.trim());
+        if (modElement == null) {
+            throw new IllegalArgumentException("Element '" + elementName.trim() + "' not found");
+        }
+        String elementType = modElement.getType().getRegistryName();
+        if (!ANIMATED_ELEMENT_TYPES.contains(elementType)) {
+            throw new IllegalArgumentException("Element '" + elementName.trim() + "' is not a GeckoLib animated element");
+        }
+        GeneratableElement definition = modElement.getGeneratableElement();
+        if (definition == null) {
+            throw new IllegalStateException("Element definition could not be loaded for '" + elementName.trim() + "'");
+        }
+
+        DefinitionApplyResult applyResult = applySafeDefinition(workspace, definition,
+                params == null ? null : params.get("definition"), booleanParam(params, "strict", false));
+        List<String> validationWarnings = validateDefinitionForGeneration(definition);
+
+        runQuickEdtMutation(() -> {
+            workspace.getModElementManager().storeModElement(definition);
+            workspace.markDirty();
+            refreshWorkspaceUi(mcreator);
+        });
+        String saveWarning = null;
+        try {
+            workspace.getFileManager().saveWorkspaceDirectlyAndWait();
+        } catch (Exception e) {
+            saveWarning = "Workspace force-save failed; persistence postconditions may be unknown: " + e.getMessage();
+        }
+
+        String recognizedInMemory = inspectInMemoryElement(workspace, elementName.trim(), elementType);
+        String definitionStored = inspectDefinitionStored(workspace, elementName.trim());
+        String definitionLoadable = inspectDefinitionLoadable(workspace, elementName.trim());
+        String workspaceEntryStored = inspectWorkspaceEntryStored(workspace, elementName.trim(), elementType);
+        CreationConfirmation confirmation = evaluateCreationConfirmation(recognizedInMemory,
+                definitionStored, definitionLoadable, workspaceEntryStored);
+
+        List<String> warnings = new ArrayList<>(applyResult.skippedFields());
+        warnings.addAll(validationWarnings);
+        if (saveWarning != null) {
+            warnings.add(saveWarning);
+        }
+        warnings.addAll(confirmation.warnings());
+        return new CreateElementResult(
+                confirmation.confirmed()
+                        ? "Updated GeckoLib element '" + elementName.trim() + "'."
+                        : "Updated GeckoLib element '" + elementName.trim() + "', but postconditions are incomplete.",
+                List.of(), validationWarnings, confirmation.confirmed(), elementName.trim(), elementType,
+                modElement.getRegistryName(), recognizedInMemory, definitionStored, definitionLoadable,
+                workspaceEntryStored, confirmation.problems(), warnings, applyResult.appliedFields(),
+                applyResult.skippedFields(), List.of());
+    }
+
+    public GenerateElementResult generateModElement(MCreator mcreator, String elementName, boolean generateBase,
+            boolean protectGradle) {
+        if (elementName == null || elementName.isBlank()) {
+            throw new IllegalArgumentException("Element name is required");
+        }
+        Workspace workspace = mcreator == null ? null : mcreator.getWorkspace();
+        if (workspace == null) {
+            throw new IllegalArgumentException("No workspace loaded");
+        }
+        ModElement modElement = workspace.getModElementByName(elementName.trim());
+        if (modElement == null) {
+            throw new IllegalArgumentException("Element '" + elementName.trim() + "' not found");
+        }
+        GeneratableElement definition = modElement.getGeneratableElement();
+        if (definition == null) {
+            throw new IllegalStateException("Element definition could not be loaded for '" + elementName.trim() + "'");
+        }
+        if (modElement.isCodeLocked()) {
+            return new GenerateElementResult("skipped_locked", elementName.trim(), List.of(), List.of(), List.of(),
+                    List.of("Element code is locked; generation skipped."), "Element is code-locked.");
+        }
+        if (workspace.getGenerator() == null) {
+            throw new IllegalStateException("Workspace generator is not available");
+        }
+
+        Path workspaceDir = workspace.getWorkspaceFolder().toPath();
+        WorkspaceMutationGuard.WorkspaceSnapshot snapshot = null;
+        List<String> warnings = new ArrayList<>();
+        try {
+            snapshot = WorkspaceMutationGuard.snapshot(workspaceDir,
+                    WorkspaceMutationGuard.DEFAULT_PROTECT_RELATIVE_PATHS);
+        } catch (Exception e) {
+            warnings.add("Could not snapshot workspace before generation: " + e.getMessage());
+        }
+
+        List<String> generatedFiles = new ArrayList<>();
+        try {
+            List<GeneratorFile> files = workspace.getGenerator().generateElement(definition, true);
+            for (GeneratorFile file : files) {
+                if (file != null && file.getFile() != null) {
+                    generatedFiles.add(workspace.getFolderManager().getPathInWorkspace(file.getFile())
+                            .replace('\\', '/'));
+                }
+            }
+            if (generateBase) {
+                workspace.getGenerator().generateBase(true);
+            }
+            workspace.getModElementManager().storeModElement(definition);
+            try {
+                workspace.getFileManager().saveWorkspaceDirectlyAndWait();
+            } catch (Exception e) {
+                warnings.add("Workspace force-save after generate failed: " + e.getMessage());
+            }
+            runQuickEdtMutation(() -> refreshWorkspaceUi(mcreator));
+        } catch (Exception e) {
+            return new GenerateElementResult("failed", elementName.trim(), generatedFiles, List.of(), List.of(),
+                    warnings, "Generation failed: " + e.getMessage());
+        }
+
+        List<String> restored = List.of();
+        List<String> deleted = List.of();
+        List<String> modified = List.of();
+        if (snapshot != null) {
+            try {
+                WorkspaceMutationGuard.MutationReport report = WorkspaceMutationGuard.diffAndProtect(workspaceDir,
+                        snapshot, WorkspaceMutationGuard.DEFAULT_PROTECT_RELATIVE_PATHS, protectGradle);
+                restored = report.restoredProtectedFiles();
+                deleted = report.deletedFiles();
+                modified = report.modifiedFiles();
+                warnings.addAll(report.warnings());
+            } catch (Exception e) {
+                warnings.add("Post-generation mutation report failed: " + e.getMessage());
+            }
+        }
+
+        return new GenerateElementResult("completed", elementName.trim(), generatedFiles, deleted, modified, warnings,
+                "Generated mod element '" + elementName.trim() + "'.");
     }
 
     public AssetRoots assetRootsForWorkspace(Workspace workspace) {
@@ -668,7 +834,61 @@ public final class GeckoLibSupportService {
                 .ifPresent(texture -> checkTextureExists(warnings, roots, "item", texture));
         checkStringField(element, "mobModelTexture")
                 .ifPresent(texture -> checkTextureExists(warnings, roots, "entity", texture));
+        // animation companion files use the geo basename when present
+        checkStringField(element, "model").ifPresent(model -> {
+            String base = model.endsWith(".geo.json") ? model.substring(0, model.length() - ".geo.json".length()) : model;
+            Path authoring = roots.animationsDir().resolve(base + ".animation.json");
+            Path runtime = roots.runtimeAnimationsDir().resolve(base + ".animation.json");
+            if (!Files.exists(authoring) && !Files.exists(runtime)) {
+                warnings.add("Missing animation companion for model '" + model + "' (expected " + base
+                        + ".animation.json under models/animations or assets animations).");
+            }
+        });
         return warnings;
+    }
+
+    private List<String> validateGeneratedCompanions(Workspace workspace, ModElement element) {
+        List<String> warnings = new ArrayList<>();
+        Object filesMeta = element.getMetadata("files");
+        if (!(filesMeta instanceof List<?> fileList) || fileList.isEmpty()) {
+            warnings.add("No generated metadata.files yet for this element; Java may not have been generated.");
+            return warnings;
+        }
+        Path root = workspace.getWorkspaceFolder().toPath();
+        for (Object entry : fileList) {
+            if (!(entry instanceof String relative) || relative.isBlank()) {
+                continue;
+            }
+            Path path = root.resolve(relative.replace('/', java.io.File.separatorChar));
+            if (!Files.isRegularFile(path)) {
+                warnings.add("metadata.files entry missing on disk: " + relative);
+            }
+        }
+        return warnings;
+    }
+
+    private Boolean readBooleanField(Object target, String fieldName) {
+        try {
+            Field field = findAccessibleField(target.getClass(), fieldName);
+            Object value = field.get(target);
+            return value instanceof Boolean bool ? bool : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static boolean booleanParam(Map<String, Object> params, String key, boolean defaultValue) {
+        if (params == null || !params.containsKey(key)) {
+            return defaultValue;
+        }
+        Object value = params.get(key);
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof String string) {
+            return Boolean.parseBoolean(string);
+        }
+        return defaultValue;
     }
 
     private void checkGeoExists(List<String> warnings, AssetRoots roots, String model) {
@@ -723,21 +943,25 @@ public final class GeckoLibSupportService {
             Constructor<? extends GeneratableElement> constructor = storageClass.getConstructor(ModElement.class);
             GeneratableElement definition = constructor.newInstance(modElement);
             List<String> appliedDefaults = applyKnownSafeDefaults(workspace, definition);
-            applySafeDefinition(workspace, definition, params == null ? null : params.get("definition"));
+            appliedDefaults.addAll(applyAnimatedEntitySensibleDefaults(workspace, definition, type.getRegistryName()));
+            DefinitionApplyResult applyResult = applySafeDefinition(workspace, definition,
+                    params == null ? null : params.get("definition"), booleanParam(params, "strict", false));
             List<String> validationWarnings = validateDefinitionForGeneration(definition);
 
-            return new InstantiatedStorage(definition, appliedDefaults, validationWarnings);
+            return new InstantiatedStorage(definition, appliedDefaults, validationWarnings,
+                    applyResult.appliedFields(), applyResult.skippedFields());
         } catch (Exception e) {
             throw new IllegalStateException("Could not create GeckoLib element storage safely: " + e.getMessage(), e);
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void applySafeDefinition(Workspace workspace, GeneratableElement definition, Object rawDefinition)
-            throws IllegalAccessException {
+    private DefinitionApplyResult applySafeDefinition(Workspace workspace, GeneratableElement definition,
+            Object rawDefinition, boolean strict) {
+        List<String> applied = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
         if (!(rawDefinition instanceof Map<?, ?> map) || map.isEmpty()) {
             applyFallbackNames(definition);
-            return;
+            return new DefinitionApplyResult(applied, skipped);
         }
 
         for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -746,28 +970,194 @@ public final class GeckoLibSupportService {
             }
             Field field;
             try {
-                field = definition.getClass().getField(key);
+                field = findAccessibleField(definition.getClass(), key);
             } catch (NoSuchFieldException e) {
-                throw new IllegalArgumentException("Unsupported GeckoLib definition field: " + key);
+                String message = "Unsupported GeckoLib definition field: " + key;
+                if (strict) {
+                    throw new IllegalArgumentException(message);
+                }
+                skipped.add(message);
+                continue;
             }
-            Object value = entry.getValue();
-            if (field.getType() == String.class && (value == null || value instanceof String)) {
-                field.set(definition, value);
-            } else if ((field.getType() == int.class || field.getType() == Integer.class) && value instanceof Number number) {
-                field.set(definition, number.intValue());
-            } else if ((field.getType() == double.class || field.getType() == Double.class) && value instanceof Number number) {
-                field.set(definition, number.doubleValue());
-            } else if ((field.getType() == float.class || field.getType() == Float.class) && value instanceof Number number) {
-                field.set(definition, number.floatValue());
-            } else if ((field.getType() == boolean.class || field.getType() == Boolean.class) && value instanceof Boolean) {
-                field.set(definition, value);
-            } else if (List.class.isAssignableFrom(field.getType()) && value instanceof List<?>) {
-                field.set(definition, value);
-            } else {
-                throw new IllegalArgumentException("Unsupported value for GeckoLib definition field: " + key);
+            try {
+                Object converted = convertDefinitionValue(workspace, field, entry.getValue());
+                field.setAccessible(true);
+                field.set(definition, converted);
+                applied.add(key);
+            } catch (IllegalArgumentException ex) {
+                if (strict) {
+                    throw ex;
+                }
+                skipped.add("Skipped definition field '" + key + "': " + ex.getMessage());
+            } catch (Exception ex) {
+                if (strict) {
+                    throw new IllegalArgumentException("Failed to apply GeckoLib definition field: " + key, ex);
+                }
+                skipped.add("Skipped definition field '" + key + "': " + ex.getMessage());
             }
         }
         applyFallbackNames(definition);
+        return new DefinitionApplyResult(applied, skipped);
+    }
+
+    private Object convertDefinitionValue(Workspace workspace, Field field, Object value) {
+        Class<?> type = field.getType();
+        if (value == null) {
+            if (type.isPrimitive()) {
+                throw new IllegalArgumentException("null is not valid for primitive field type " + type.getName());
+            }
+            return null;
+        }
+        if (type == String.class && value instanceof String) {
+            return value;
+        }
+        if ((type == int.class || type == Integer.class) && value instanceof Number number) {
+            return number.intValue();
+        }
+        if ((type == double.class || type == Double.class) && value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if ((type == float.class || type == Float.class) && value instanceof Number number) {
+            return number.floatValue();
+        }
+        if ((type == boolean.class || type == Boolean.class) && value instanceof Boolean) {
+            return value;
+        }
+        if (List.class.isAssignableFrom(type) && value instanceof List<?>) {
+            return value;
+        }
+        if (type == Color.class) {
+            return convertColor(value);
+        }
+        if (type == Sound.class) {
+            return convertSound(workspace, value);
+        }
+        if (type == MItemBlock.class) {
+            return convertMItemBlock(workspace, value);
+        }
+        if (type == NumberProcedure.class) {
+            return convertNumberProcedure(value);
+        }
+        if (type == LogicProcedure.class) {
+            return convertLogicProcedure(value);
+        }
+        if (type == Procedure.class) {
+            return convertProcedure(value);
+        }
+        if (type.isEnum() && value instanceof String string) {
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Object enumValue = Enum.valueOf((Class<? extends Enum>) type, string);
+            return enumValue;
+        }
+        if (type.isInstance(value)) {
+            return value;
+        }
+        throw new IllegalArgumentException("Unsupported value for type " + type.getSimpleName());
+    }
+
+    private Color convertColor(Object value) {
+        if (value instanceof Color color) {
+            return color;
+        }
+        if (value instanceof Number number) {
+            return new Color(number.intValue(), true);
+        }
+        if (value instanceof Map<?, ?> map) {
+            Object raw = map.containsKey("value") ? map.get("value") : map.get("rgb");
+            if (raw instanceof Number number) {
+                return new Color(number.intValue(), true);
+            }
+        }
+        throw new IllegalArgumentException("Expected color int or {value:int}");
+    }
+
+    private Sound convertSound(Workspace workspace, Object value) {
+        if (value instanceof Sound sound) {
+            return sound;
+        }
+        if (value instanceof String string) {
+            return new Sound(workspace, string);
+        }
+        if (value instanceof Map<?, ?> map && map.get("value") instanceof String string) {
+            return new Sound(workspace, string);
+        }
+        throw new IllegalArgumentException("Expected sound string or {value:string}");
+    }
+
+    private MItemBlock convertMItemBlock(Workspace workspace, Object value) {
+        if (value instanceof MItemBlock item) {
+            return item;
+        }
+        if (value instanceof String string) {
+            return new MItemBlock(workspace, string);
+        }
+        if (value instanceof Map<?, ?> map && map.get("value") instanceof String string) {
+            return new MItemBlock(workspace, string);
+        }
+        throw new IllegalArgumentException("Expected item string or {value:string}");
+    }
+
+    private NumberProcedure convertNumberProcedure(Object value) {
+        if (value instanceof NumberProcedure procedure) {
+            return procedure;
+        }
+        if (value instanceof Number number) {
+            return new NumberProcedure(null, number.doubleValue());
+        }
+        if (value instanceof Map<?, ?> map) {
+            Object fixed = map.get("fixedValue");
+            if (fixed instanceof Number number) {
+                return new NumberProcedure(null, number.doubleValue());
+            }
+        }
+        throw new IllegalArgumentException("Expected number or {fixedValue:number}");
+    }
+
+    private LogicProcedure convertLogicProcedure(Object value) {
+        if (value instanceof LogicProcedure procedure) {
+            return procedure;
+        }
+        if (value instanceof Boolean bool) {
+            return new LogicProcedure(null, bool);
+        }
+        if (value instanceof Map<?, ?> map && map.get("fixedValue") instanceof Boolean bool) {
+            return new LogicProcedure(null, bool);
+        }
+        throw new IllegalArgumentException("Expected boolean or {fixedValue:boolean}");
+    }
+
+    private Procedure convertProcedure(Object value) {
+        if (value instanceof Procedure procedure) {
+            return procedure;
+        }
+        if (value instanceof String string) {
+            return new Procedure(string.isBlank() ? null : string);
+        }
+        if (value instanceof Map<?, ?> map) {
+            Object name = map.get("name");
+            if (name == null || (name instanceof String s && s.isBlank())) {
+                return new Procedure(null);
+            }
+            if (name instanceof String string) {
+                return new Procedure(string);
+            }
+        }
+        throw new IllegalArgumentException("Expected procedure name or {name:string}");
+    }
+
+    private Field findAccessibleField(Class<?> type, String name) throws NoSuchFieldException {
+        Class<?> current = type;
+        while (current != null && current != Object.class) {
+            try {
+                Field field = current.getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        // public field on type hierarchy
+        return type.getField(name);
     }
 
     private void applyFallbackNames(GeneratableElement definition) {
@@ -815,7 +1205,7 @@ public final class GeckoLibSupportService {
 
                     switch (name) {
                         case "aixml":
-                            defaultValue = "<xml xmlns=\"https://developers.google.com/blockly/xml\"><block type=\"aitasks_container\" deletable=\"false\" x=\"40\" y=\"40\"></block></xml>";
+                            defaultValue = DEFAULT_CREATURE_AI_XML;
                             break;
                         case "mobModelGlowTexture":
                             defaultValue = "";
@@ -834,11 +1224,15 @@ public final class GeckoLibSupportService {
                             defaultValue = new ArrayList<MItemBlock>();
                             break;
                         case "livingSound":
-                        case "hurtSound":
-                        case "deathSound":
                         case "stepSound":
                         case "raidCelebrationSound":
                             defaultValue = new Sound(workspace, "");
+                            break;
+                        case "hurtSound":
+                            defaultValue = new Sound(workspace, "entity.generic.hurt");
+                            break;
+                        case "deathSound":
+                            defaultValue = new Sound(workspace, "entity.generic.death");
                             break;
                         case "transparentModelCondition":
                         case "isShakingCondition":
@@ -873,6 +1267,72 @@ public final class GeckoLibSupportService {
             clazz = clazz.getSuperclass();
         }
         return appliedDefaults;
+    }
+
+    private List<String> applyAnimatedEntitySensibleDefaults(Workspace workspace, GeneratableElement definition,
+            String elementType) {
+        List<String> applied = new ArrayList<>();
+        if (!"animatedentity".equals(elementType)) {
+            return applied;
+        }
+        applied.addAll(setIntIfZero(definition, "deathTime", 20));
+        applied.addAll(setIntIfZero(definition, "lerp", 4));
+        applied.addAll(setStringIfBlank(definition, "animation1", "idle"));
+        applied.addAll(setStringIfBlank(definition, "animation2", "walk"));
+        applied.addAll(setBooleanIfFalse(definition, "enable2", true));
+        applied.addAll(setStringIfBlank(definition, "aiBase", "(none)"));
+        applied.addAll(setStringIfBlank(definition, "guiBoundTo", "<NONE>"));
+        try {
+            Field aixml = findAccessibleField(definition.getClass(), "aixml");
+            Object current = aixml.get(definition);
+            if (current instanceof String xml && xml.contains("aitasks_container") && !xml.contains("wander")) {
+                aixml.set(definition, DEFAULT_CREATURE_AI_XML);
+                applied.add("aixml");
+            }
+        } catch (Exception ignored) {
+        }
+        return applied;
+    }
+
+    private List<String> setIntIfZero(Object target, String fieldName, int value) {
+        try {
+            Field field = findAccessibleField(target.getClass(), fieldName);
+            Object current = field.get(target);
+            if (current instanceof Number number && number.intValue() == 0) {
+                if (field.getType() == int.class || field.getType() == Integer.class) {
+                    field.set(target, value);
+                    return List.of(fieldName);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return List.of();
+    }
+
+    private List<String> setStringIfBlank(Object target, String fieldName, String value) {
+        try {
+            Field field = findAccessibleField(target.getClass(), fieldName);
+            Object current = field.get(target);
+            if (current == null || (current instanceof String s && s.isBlank())) {
+                field.set(target, value);
+                return List.of(fieldName);
+            }
+        } catch (Exception ignored) {
+        }
+        return List.of();
+    }
+
+    private List<String> setBooleanIfFalse(Object target, String fieldName, boolean value) {
+        try {
+            Field field = findAccessibleField(target.getClass(), fieldName);
+            Object current = field.get(target);
+            if (current instanceof Boolean bool && !bool && value) {
+                field.set(target, true);
+                return List.of(fieldName);
+            }
+        } catch (Exception ignored) {
+        }
+        return List.of();
     }
 
     private List<String> validateDefinitionForGeneration(GeneratableElement definition) {
@@ -999,13 +1459,33 @@ public final class GeckoLibSupportService {
     public record CreateElementResult(String message, List<String> appliedDefaults, List<String> validationWarnings,
                                       boolean confirmed, String elementName, String elementType, String registryName,
                                       String recognizedInMemory, String definitionStored, String definitionLoadable,
-                                      String workspaceEntryStored, List<String> problems, List<String> warnings) {
+                                      String workspaceEntryStored, List<String> problems, List<String> warnings,
+                                      List<String> appliedFields, List<String> skippedFields,
+                                      List<String> generatedFiles) {
+        public CreateElementResult {
+            appliedFields = appliedFields == null ? List.of() : List.copyOf(appliedFields);
+            skippedFields = skippedFields == null ? List.of() : List.copyOf(skippedFields);
+            generatedFiles = generatedFiles == null ? List.of() : List.copyOf(generatedFiles);
+        }
     }
 
     public record CreationConfirmation(boolean confirmed, List<String> problems, List<String> warnings) {
     }
 
-    private record InstantiatedStorage(GeneratableElement definition, List<String> appliedDefaults, List<String> warnings) {
+    public record GenerateElementResult(String status, String elementName, List<String> generatedFiles,
+                                        List<String> deletedFiles, List<String> modifiedFiles, List<String> warnings,
+                                        String message) {
+    }
+
+    private record DefinitionApplyResult(List<String> appliedFields, List<String> skippedFields) {
+    }
+
+    private record InstantiatedStorage(GeneratableElement definition, List<String> appliedDefaults,
+                                       List<String> validationWarnings, List<String> appliedFields,
+                                       List<String> skippedFields) {
+        List<String> warnings() {
+            return validationWarnings;
+        }
     }
 
     private record TargetSpec(Path path, String location) {

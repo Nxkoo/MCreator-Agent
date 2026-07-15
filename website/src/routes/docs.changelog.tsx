@@ -41,6 +41,47 @@ type Release = {
 
 const RELEASES: Release[] = [
   {
+    version: "1.0.1-2024.4 · hardening",
+    date: "In development / next preview",
+    status: "preview",
+    summary:
+      "Hardens the GeckoLib create → generate path after real commission-mod failures: safer definitions, single-element generate, gradle protection, and agent skill truth tables.",
+    entries: [
+      {
+        tag: "added",
+        text: "updateGeckoLibElement — update animated element definitions through MCreator APIs.",
+      },
+      {
+        tag: "added",
+        text: "generateModElement — Generator#generateElement for one element + optional generateBase, with protectGradle restore.",
+      },
+      {
+        tag: "added",
+        text: "createGeckoLibElement generateCode flag; richer appliedFields/skippedFields/generatedFiles reporting.",
+      },
+      {
+        tag: "changed",
+        text: "Definition converter accepts nested colors {value}, Sound/MItemBlock {value}, and procedure wrappers; unknown nested fields skip with warnings (strict mode fails).",
+      },
+      {
+        tag: "changed",
+        text: "Animated entity defaults: creature AI wander/look/swim, deathTime/lerp, idle/walk, generic hurt/death sounds.",
+      },
+      {
+        tag: "changed",
+        text: "regenerateCode/buildWorkspace snapshot src/main + restore protected gradle files; report deleted/modified paths (status=dispatched).",
+      },
+      {
+        tag: "fixed",
+        text: "Agents no longer encouraged to treat create + full regenerate as a safe end-to-end entity path.",
+      },
+      {
+        tag: "note",
+        text: "MCreator Skill docs/skill package updated with MCP tool truth table and preferred GeckoLib flow.",
+      },
+    ],
+  },
+  {
     version: "1.0.0-2024.4 · preview",
     date: "Preview build available",
     status: "preview",
@@ -76,7 +117,10 @@ const RELEASES: Release[] = [
         text: "Version-aware support extending to newer MCreator releases as they're validated.",
       },
       { tag: "changed", text: "Lock tool schemas behind a versioned contract once stable." },
-      { tag: "added", text: "Expanded GeckoLib diagnostics and richer validation reports." },
+      {
+        tag: "changed",
+        text: "True await-completion for full regenerate/build Gradle pipelines (beyond dispatch + snapshot).",
+      },
     ],
   },
 ];

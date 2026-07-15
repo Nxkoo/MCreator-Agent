@@ -43,7 +43,8 @@ MCreator Agent gives an AI client a narrower and more useful interface:
 - MCreator build, regenerate code, run client, and run server actions.
 - GeckoLib Plugin/API status checks.
 - GeckoLib model, animation, and texture asset listing/import helpers.
-- GeckoLib element creation assistance and validation for supported cases.
+- GeckoLib element create/update, optional single-element code generation, and validation.
+- Guarded regenerate/build mutation reports with protected `mcreator.gradle` restore.
 - Port discovery through the local MCreator Agent status menu and port file.
 
 ## Current Status

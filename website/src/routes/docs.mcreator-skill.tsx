@@ -99,41 +99,55 @@ function MCreatorSkillDocs() {
       </Callout>
 
       <h2 className="mt-10 text-2xl text-foreground">Installation</h2>
-      <p>
-        Use your agent's supported skill installation flow. The public skills ecosystem command
-        below may be available for compatible clients:
-      </p>
+      <p>The skill is installable with the open skills CLI:</p>
       <CodeBlock
         language="bash"
         showLineNumbers={false}
         code="npx skills add Nxkoo/mcreator-skill"
       />
-      <Callout variant="warning">
-        Confirm the supported install method in the skill repository. Manual installation
-        instructions are available on GitHub.
-      </Callout>
-      <p>For Codex on Windows, the repository documents this user-skill installation:</p>
+      <p>Install for a specific agent using one of the commands documented by the repository:</p>
       <CodeBlock
-        language="powershell"
+        language="bash"
         showLineNumbers={false}
-        code={`git clone https://github.com/Nxkoo/mcreator-skill.git "$env:USERPROFILE\\.agents\\skills\\mcreator-ai"`}
+        code={`npx skills add Nxkoo/mcreator-skill --skill mcreator-skill -a codex
+npx skills add Nxkoo/mcreator-skill --skill mcreator-skill -a cursor
+npx skills add Nxkoo/mcreator-skill --skill mcreator-skill -a claude-code`}
       />
-      <p>
-        You can also clone or download the skill repository and follow its README for
-        repository-scoped installation and other Agent Skills-compatible tools.
-      </p>
+      <h3 className="mt-6 text-xl text-foreground">Validate the installation source</h3>
+      <p>List the repository's available skills without installing:</p>
+      <CodeBlock
+        language="bash"
+        showLineNumbers={false}
+        code="npx skills add Nxkoo/mcreator-skill --list"
+      />
+      <p>Expected output:</p>
+      <CodeBlock language="text" showLineNumbers={false} code="Found 1 skill: mcreator-skill" />
+      <Callout variant="note" title="skills.sh indexing">
+        If the CLI finds the skill but the public skills.sh page says{" "}
+        <code>resource not found</code>, the skill is still installable. The public directory may
+        not have indexed it yet.
+      </Callout>
 
       <h2 className="mt-10 text-2xl text-foreground">Recommended workflow</h2>
       <ol className="list-decimal space-y-2 pl-5">
         <li>Add the skill to your coding agent.</li>
-        <li>Open your MCreator project.</li>
+        <li>Open your MCreator project (and MCreator Agent MCP when available).</li>
         <li>Ask the agent to inspect before editing.</li>
         <li>Require a short plan before changes.</li>
-        <li>Keep generated-code boundaries explicit.</li>
+        <li>Keep generated-code boundaries and <code>metadata.files</code> explicit.</li>
         <li>
-          Validate with focused tests, regenerate/build, or MCreator Agent MCP tools when available.
+          For GeckoLib entities prefer{" "}
+          <code>createGeckoLibElement → generateModElement → validate</code>, not full{" "}
+          <code>regenerateCode</code>.
         </li>
+        <li>Validate with focused compile/tests and multi-layer reporting (filesystem vs MCP vs build).</li>
       </ol>
+
+      <Callout variant="warning" title="MCP truth">
+        <code>createGeckoLibElement</code> without generated Java is incomplete. Prefer{" "}
+        <code>generateModElement</code> over full-workspace regen. Do not hand-edit{" "}
+        <code>.mod.json</code> when <code>updateGeckoLibElement</code> is available.
+      </Callout>
 
       <h2 className="mt-10 text-2xl text-foreground">What the skill helps with</h2>
       <ul className="list-disc space-y-1.5 pl-5">
@@ -142,6 +156,7 @@ function MCreatorSkillDocs() {
         <li>Lock-aware generated Java changes and clean feature package boundaries.</li>
         <li>Forge, NeoForge, Fabric, Bedrock, and datapack generator awareness.</li>
         <li>GeckoLib asset, model, animation, renderer, and validation safety.</li>
+        <li>MCP tool truth table and anti-false-success rules for agents.</li>
         <li>Post-regeneration review, focused builds, and end-of-task reporting.</li>
       </ul>
 

@@ -64,6 +64,7 @@ const TOOL_GROUPS: { title: string; tools: { name: string; kind: ToolKind }[] }[
   {
     title: "Actions",
     tools: [
+      { name: "generateModElement", kind: "WRITE" },
       { name: "regenerateCode", kind: "ACTION" },
       { name: "buildWorkspace", kind: "ACTION" },
       { name: "runClient", kind: "ACTION" },
@@ -77,6 +78,7 @@ const TOOL_GROUPS: { title: string; tools: { name: string; kind: ToolKind }[] }[
       { name: "listGeckoLibAssets", kind: "GECKOLIB" },
       { name: "importGeckoLibAssets", kind: "GECKOLIB" },
       { name: "createGeckoLibElement", kind: "GECKOLIB" },
+      { name: "updateGeckoLibElement", kind: "GECKOLIB" },
       { name: "validateGeckoLibElement", kind: "GECKOLIB" },
     ],
   },
@@ -359,11 +361,11 @@ function Home() {
             <ol className="mt-6 space-y-2 text-sm">
               {[
                 "Check plugin/API status",
-                "List GeckoLib assets",
-                "Import model, animation, or texture files",
-                "Scaffold supported animated elements",
-                "Validate known model/texture references",
-                "Build the workspace",
+                "Import geo, animation, and texture assets",
+                "Create element with a complete definition",
+                "Generate one element (not full workspace regen)",
+                "Validate assets and metadata.files",
+                "Build with mutation report / compileJava",
               ].map((s, i) => (
                 <li key={s} className="flex items-center gap-3 text-foreground/90">
                   <span className="grid h-6 w-6 place-items-center rounded border border-primary/30 font-mono text-[11px] text-primary">
@@ -374,26 +376,26 @@ function Home() {
               ))}
             </ol>
             <p className="mt-6 font-mono text-[11px] text-muted-foreground">
-              GeckoLib support is active when the GeckoLib Plugin is installed and enabled in the
-              workspace. Full end-to-end animation authoring is not implied.
+              Prefer generateModElement over full regenerateCode. GeckoLib API must be enabled in
+              the workspace.
             </p>
           </div>
 
           <div className="rounded-lg border border-border bg-surface p-6">
             <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-              getGeckoLibStatus →
+              create → generateModElement →
             </div>
             <div className="mt-3 space-y-2 font-mono text-[12.5px]">
               <div className="text-success">✓ plugin detected · GeckoLib Plugin 6.0.2</div>
-              <div className="text-success">✓ API available · geckolib</div>
-              <div className="text-success">✓ supported type · animatedentity</div>
-              <div className="text-warning">▲ missing model reference: warden.geo.json</div>
+              <div className="text-success">✓ create confirmed · animatedentity</div>
+              <div className="text-success">✓ generateModElement · status completed</div>
+              <div className="text-success">✓ protected mcreator.gradle unchanged</div>
               <div className="text-muted-foreground">
-                → open MCreator to review the element before building
+                → validateGeckoLibElement · then buildWorkspace
               </div>
             </div>
             <div className="mt-4 border-t border-border/60 pt-3 font-mono text-[11px] text-muted-foreground">
-              Suggestions are proposed, not applied. The agent waits for approval.
+              Create without generated Java is incomplete. Full regen remains last resort.
             </div>
           </div>
         </div>
@@ -528,18 +530,20 @@ function Home() {
       {/* MCREATOR SKILL */}
       <section className="border-b border-border/60">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-          <SectionLabel>09 · Companion skill</SectionLabel>
+          <SectionLabel>09 · Agent Skill</SectionLabel>
           <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
             <div>
               <h2 className="text-4xl text-foreground md:text-5xl">
-                A companion skill for agents.
+                MCreator guidance for compatible AI coding agents.
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Pair MCreator Agent with MCreator Skill to give your coding agent stronger
+                MCreator Skill works standalone to give compatible AI coding agents
                 MCreator-specific context, safer workflow rules, and better GeckoLib guidance.
+                Optionally pair it with MCreator Agent for local MCP tools and active workspace
+                access.
               </p>
               <p className="mt-4 font-mono text-[11px] text-muted-foreground">
-                MCreator Skill guides behavior. MCreator Agent provides local MCP tools.
+                Works standalone. Pairs with MCreator Agent.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -564,7 +568,7 @@ function Home() {
                 {
                   Icon: ShieldCheck,
                   title: "Skill-only",
-                  body: "Use with any coding agent for MCreator-aware guidance.",
+                  body: "Use with compatible AI coding agents for MCreator-aware guidance.",
                 },
                 {
                   Icon: Network,

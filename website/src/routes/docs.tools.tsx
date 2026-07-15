@@ -64,6 +64,16 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         example: `setModElementLock({ elementName: "ExampleBlock", locked: true })`,
         notes: "Updates the workspace and UI without regenerating code or starting a build.",
       },
+      {
+        name: "generateModElement",
+        kind: "WRITE",
+        purpose:
+          "Generate code for one mod element via Generator#generateElement, optionally regenerate base registries, and protect gradle files.",
+        args: `{ elementName: string, generateBase?: boolean, protectGradle?: boolean }`,
+        example: `generateModElement({ elementName: "ZombieWarden", generateBase: true, protectGradle: true })`,
+        notes:
+          "Preferred over full regenerateCode for new GeckoLib entities. Restores mcreator.gradle/build.gradle when rewritten if protectGradle is true (default).",
+      },
     ],
   },
   {
@@ -72,14 +82,19 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
       {
         name: "regenerateCode",
         kind: "ACTION",
-        purpose: "Trigger MCreator's code regeneration for the current workspace.",
-        args: `{}`,
+        purpose:
+          "Full-workspace code regeneration with file snapshot/diff. Prefer generateModElement for single elements.",
+        args: `{ protectGradle?: boolean, awaitStartOnly?: boolean }`,
+        notes:
+          "Returns status=dispatched plus deleted/modified/restoredProtectedFiles. May still continue asynchronously in MCreator. Can delete untracked package Java.",
       },
       {
         name: "buildWorkspace",
         kind: "ACTION",
-        purpose: "Build the workspace and report success or compilation errors.",
-        args: `{}`,
+        purpose: "Dispatch workspace build with mutation snapshot/report for protected files.",
+        args: `{ protectGradle?: boolean, awaitStartOnly?: boolean }`,
+        notes:
+          "Gradle completion may continue asynchronously; inspect the mutation report and local compile logs.",
       },
       {
         name: "runClient",
@@ -116,24 +131,33 @@ const GROUPS: { title: string; tools: Tool[] }[] = [
         purpose: "Import local model / animation files into the workspace under validated paths.",
         args: `{ assets: { sourcePath: string, targetName?: string, kind: "geo_model" | "geo" | "animation" | "texture", textureSubdir?: string }[], overwrite?: boolean }`,
         notes:
-          "Supported kinds include geo_model, animation, and texture. Geo and animation JSON are parsed before commit.",
+          "Dual-writes authoring (models/) and runtime (assets/<modid>/geo|animations). Texture subdir entities aliases entity.",
       },
       {
         name: "createGeckoLibElement",
         kind: "GECKOLIB",
-        purpose: "Assist with creating/scaffolding a supported GeckoLib animated element.",
-        args: `{ elementType: string, elementName: string, definition?: object }`,
+        purpose:
+          "Create a supported GeckoLib animated element. Optional generateCode runs single-element generation after confirmed create.",
+        args: `{ elementType: string, elementName: string, definition?: object, generateCode?: boolean, strict?: boolean }`,
         notes:
-          "Supported types: animatedentity, animateditem, animatedblock, animatedarmor. Public fields from definition are applied conservatively. Some plugin-specific fields may still need to be configured in the MCreator UI.",
+          "Supports nested colors {value}, sounds/items {value}, and entity defaults (AI, deathTime, lerp, idle/walk). Create without generated Java is incomplete.",
+      },
+      {
+        name: "updateGeckoLibElement",
+        kind: "GECKOLIB",
+        purpose:
+          "Update a GeckoLib animated element definition through MCreator APIs (prefer over hand-editing .mod.json).",
+        args: `{ elementName: string, definition: object, strict?: boolean, merge?: boolean }`,
+        example: `updateGeckoLibElement({ elementName: "ZombieWarden", definition: { headMovement: true } })`,
       },
       {
         name: "validateGeckoLibElement",
         kind: "GECKOLIB",
         purpose:
-          "Check GeckoLib plugin/API availability, supported type, known required fields, and known asset references.",
+          "Check GeckoLib plugin/API, type, geo/texture/animation assets, and metadata.files companions when present.",
         args: `{ elementName: string }`,
         notes:
-          "Validation checks known model and texture references such as animModel, model, texture, and entityTexture.",
+          "Warns when generation has not run yet, and when headMovement requires multi-bone review.",
       },
     ],
   },
