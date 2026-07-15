@@ -327,8 +327,7 @@ public class McpServer {
      */
     private Map<String, Object> handleToolCall(Map<String, Object> params) {
         String toolName = params == null ? null : (String) params.get("name");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> arguments = params == null ? null : (Map<String, Object>) params.get("arguments");
+        Map<String, Object> arguments = coerceToolArguments(params == null ? null : params.get("arguments"));
 
         if (toolName == null || toolName.isBlank()) {
             List<McpTypes.ToolContent> errorContent = List.of(
@@ -340,10 +339,6 @@ public class McpServer {
             return response;
         }
 
-        if (arguments == null) {
-            arguments = Map.of();
-        }
-        
         LOG.info("Handling tool call: {} with arguments: {}", toolName, arguments);
         
         try {
@@ -596,6 +591,39 @@ public class McpServer {
     public void registerHandler(String method, McpHandler handler) {
         handlers.put(method, handler);
         LOG.debug("Registered handler for method: {}", method);
+    }
+
+    /**
+     * Clients (and PowerShell ConvertTo-Json) sometimes send arguments as [] or omit them.
+     * Normalize to a string-keyed map for tool handlers.
+     */
+    @SuppressWarnings("unchecked")
+    static Map<String, Object> coerceToolArguments(Object rawArguments) {
+        if (rawArguments == null) {
+            return Map.of();
+        }
+        if (rawArguments instanceof Map<?, ?> map) {
+            Map<String, Object> out = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() != null) {
+                    out.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+            return out;
+        }
+        if (rawArguments instanceof List<?> list) {
+            if (list.isEmpty()) {
+                return Map.of();
+            }
+            // Some clients send a single map wrapped in a list.
+            if (list.size() == 1 && list.get(0) instanceof Map<?, ?>) {
+                return coerceToolArguments(list.get(0));
+            }
+            throw new IllegalArgumentException(
+                    "Tool arguments must be a JSON object, not an array with " + list.size() + " entries");
+        }
+        throw new IllegalArgumentException(
+                "Tool arguments must be a JSON object, got: " + rawArguments.getClass().getName());
     }
 
     /**
